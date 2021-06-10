@@ -1,107 +1,80 @@
-"""
-TODO: 
-
-Add routines that are simple to call and download the needed information
-from the NASA Exoplanet Archive. The goal is to avoid the cumbersome process
-of visiting the NASA Exoplanet Archive, manually selecting the columns of 
-interest, then downloading the csv files each time. All of this should be 
-automated with a routine that is called once each time the csv target lists
-need to be updated, i.e. at least once per month.
-
-There need to be 2x routines:
-
-1. targetsPublishedConfirmation()
-
-Source = 'Confirmed planets' on NASA Exoplanet Archive.
-
-These targets pass a stringent confirmation condition, which I believe is 
-a peer-reviewed, published confirmation/validation paper. A confirmation
-paper posted to arXiv is not sufficient, until it has been published in
-a peer-reviewed journal.
-
-2. targetsUnpublishedTOIs()
-
-Source = 'TESS Project Candidates'
-
-These targets have been identified as TESS 'Objects of Interest' (TOIs). 
-However, they retain a 'candidate' status until a confirmation paper has
-been published in a peer-reviewed journal. As such, NASA Exoplanet Archive
-will not list a mass for these candidates, because if a published mass was
-available, a given target would no longer be listed as a candidate. 
-Therefore, an empirical mass-radius relation is used to estimate what the 
-mass of each candidate is likely to be, allowing subsequent calculations 
-of transmission spectroscopy metrics to be performed (with the big caveat
-that empirical .
 
 
-"""
+import requests
+import pandas as pd
+import numpy as np
+from datetime import datetime
 
 def targetsWithPublishedConfirmation():
     """
     Confirmed Planets from NASA Exoplanet Archive.    
-    1. Remove condition 'Default parameter set = 1'.
-    2. 'Select columns' > 'Clear all'
-    3. Then select these columns:
-        1. Planet name
-        2. Default parameter set
-        3. Discovery facility
-        4. Detected by transits
-        5. Orbital period (day)
-        6. Orbit semi-major axis (AU)
-        7. Radius value (Earth radius)
-        8. Radius upper uncertainty (Earth radius)
-        9. Radius lower uncertainty (Earth radius)
-       10. Mass value (Earth mass)
-       11. Mass upper uncertainty (Earth mass)
-       12. Mass lower uncertainty (Earth mass)
-       13. Mass/Mass*sin(i) Provenance
-       14. Eccentricity
-       15. Insolation flux (Earth flux)
-       16. Inclination (deg)
-       17. Impact parameter
-       18. Transit duration (hour)
-       19. Ratio of semi-major axis to stellar radius
-       20. Ratio of planet to stellar radius
-       21. Stellar effective temperature (Kelvin)
-       22. Stellar radius (solar radius)
-       23. Stellar mass (solar mass)
-       24. Stellar log10 gravity (CGS units, i.e. cm^2/s)
-       25. RA (deg)
-       26. Dec (dec)
-       27. Distance (parsec)
-       28. V (mag)
-       29. J (mag)
-       30. H (mag)
-       31. Ks (mag)
-       Click 'Update'. Close 'Select columns' popup.
-    4. Set condition 'Detected by transits = 1'.
-    5. Then 'Download Table' > 'CSV format'.
+
     """
-    confirmedFpath = None
+    date = str(datetime.date(datetime.now()))
+    path = 'PS_'+date+'.csv'
+    confirmedFpath = path
+    
+    default_query = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+ps+where+tran_flag+=+1&format=csv"
+    
+    add_few_elements = ','.join(
+        ['pl_name','default_flag','disc_facility','tran_flag','pl_orbper','pl_orbpererr1','pl_orbpererr2',\
+         'pl_orbperlim','pl_orbsmax','pl_orbsmaxerr1','pl_orbsmaxerr2','pl_orbsmaxlim','pl_rade',\
+         'pl_radeerr1','pl_radeerr2','pl_radelim','pl_masse','pl_masseerr1','pl_masseerr2','pl_masselim',\
+         'pl_bmassprov','pl_orbeccen','pl_orbeccenerr1','pl_orbeccenerr2','pl_orbeccenlim','pl_insol',\
+         'pl_insolerr1','pl_insolerr2','pl_insollim','pl_orbincl','pl_orbinclerr1','pl_orbinclerr2',\
+         'pl_orbincllim','pl_imppar','pl_impparerr1','pl_impparerr2','pl_impparlim','pl_trandur',\
+         'pl_trandurerr1','pl_trandurerr2','pl_trandurlim','pl_ratdor','pl_ratdorerr1','pl_ratdorerr2',\
+         'pl_ratdorlim','pl_ratror','pl_ratrorerr1','pl_ratrorerr2','pl_ratrorlim','st_teff','st_tefferr1',\
+         'st_tefferr2','st_tefflim','st_rad','st_raderr1','st_raderr2','st_radlim','st_mass','st_masserr1',\
+         'st_masserr2','st_masslim','st_logg','st_loggerr1','st_loggerr2','st_logglim','rastr','ra',\
+         'decstr','dec','sy_dist','sy_disterr1','sy_disterr2','sy_vmag','sy_vmagerr1','sy_vmagerr2',\
+         'sy_jmag','sy_jmagerr1','sy_jmagerr2','sy_hmag','sy_hmagerr1','sy_hmagerr2','sy_kmag',\
+         'sy_kmagerr1','sy_kmagerr2'])
+        
+    all_planets =  requests.get(default_query.split('*')[0] + add_few_elements + default_query.split('*')[1]) 
+    
+    all_planets = all_planets.text.split('\n')
+    
+    planets_df = pd.DataFrame(columns=all_planets[0].split(','), 
+                              data = [i.split(',') for i in all_planets[1:-1]])
+    planets_df = planets_df.replace(to_replace='', value=np.nan)
+    
+    for i in planets_df:
+        planets_df[i] = planets_df[i].str.replace('"', "")
+    planets_df.head()
+    planets_df.to_csv(confirmedFpath, index=False)
+
     return confirmedFpath
+
 
 def targetsUnpublishedTOIs():
     """
     TESS Project Candidates from NASA Exoplanet Archive.
-    1. 'Select columns' > 'Clear all'
-    2. Then select these columns:
-        1. TESS Object of Interest
-        2. TFOPWG Disposition
-        3. RA (deg) [ click '+' next to 'RA (sexagesimal)' ]
-        4. Dec (dec) [ click '+' next to 'Dec (sexagesimal)' ]
-        5. Orbital Period (day)
-        6. Transit duration (hour)
-        7. Radius value (Earth radii)
-        8. Radius upper uncertainty (Earth radius)
-        9. Radius lower uncertainty (Earth radius)
-       10. Insolation flux (Earth flux)
-       11. Equilibrium Temperature (Kelvin)
-       12. TESS magnitude
-       13. Stellar effective temperature (Kelvin)
-       14. Stellar log10 gravity (CGS units, i.e. cm^2/s)
-       15. Stellar radius (solar radius)
-       Click 'Update'. Close 'Select columns' popup.
-    3. Then 'Download Table' > 'CSV format'.
+    
     """
-    toiFpath = None
+    date = str(datetime.date(datetime.now()))
+    path = 'TOI_'+date+'.csv'
+    toiFpath = path
+    
+    default_query = "https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?table=TOI&format=csv"
+    
+    add_few_elements = '&select='+','.join(
+    ['toi','tfopwg_disp','rastr','ra','decstr','dec','pl_orbper','pl_orbpererr1','pl_orbpererr2',\
+     'pl_orbperlim','pl_trandurh','pl_trandurherr1','pl_trandurherr2','pl_trandurhlim','pl_rade',\
+     'pl_radeerr1','pl_radeerr2','pl_radelim','pl_insol','pl_insolerr1','pl_insolerr2','pl_insollim',\
+     'pl_eqt','pl_eqterr1','pl_eqterr2','pl_eqtlim','st_tmag','st_tmagerr1','st_tmagerr2','st_tmaglim',\
+     'st_teff','st_tefferr1','st_tefferr2','st_tefflim','st_logg','st_loggerr1','st_loggerr2','st_logglim',\
+     'st_rad','st_raderr1','st_raderr2','st_radlim&'])
+        
+    all_planets =  requests.get(default_query.split('&')[0] + add_few_elements + default_query.split('&')[1]) 
+    
+    all_planets = all_planets.text.split('\n')
+    
+    planets_df = pd.DataFrame(columns=all_planets[0].split(','), 
+                              data = [i.split(',') for i in all_planets[1:-1]])
+    planets_df = planets_df.replace(to_replace='', value=np.nan)
+        
+    planets_df.head()
+    planets_df.to_csv(toiFpath, index=False)
+    
     return toiFpath
