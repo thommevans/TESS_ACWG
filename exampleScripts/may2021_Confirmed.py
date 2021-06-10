@@ -8,13 +8,10 @@ ADIR = os.getcwd()
 
 ########################################################################
 # Step 1: Download the target list from NASA Exoplanet Archive.
-# TODO: Have routines that download the target lists without
-# having to do it manually.
-csvFpath = downloadTargetLists.targetsWithPublishedConfirmation() # dummy call for now
-#CSV_FNAME = 'PS_2021.05.03_06.59.24.csv'
-CSV_FNAME = 'PS_2021.05.29_07.25.27.csv'
+
+csvFpath = downloadTargetLists.targetsWithPublishedConfirmation()
+CSV_FNAME = csvFpath
 CSV_FPATH = os.path.join( ADIR, CSV_FNAME )
-csvFpath = CSV_FPATH # for now use file that was downloaded manually
 
 ########################################################################
 # Step 2: Process the csv file downloaded from NASA Exoplanet Archive.
