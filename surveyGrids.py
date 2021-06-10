@@ -9,17 +9,65 @@ FIGDIR = os.path.join( os.getcwd(), 'Figures' )
     
 
 def quickCycle1():
+    def gridEdgesFunc( surveyName='ACWG' ):
+        if surveyName=='ACWG':
+            TeqK = np.array( [ 100, 350, 800, 1250, 1750, 2250, 3000 ] )
+            RpRE = np.array( [ 0.3, 1.50, 2.75, 4.00, 10.00, 25 ] )
+        return TeqK, RpRE
+    
     d = np.loadtxt( 'cycle1.csv', delimiter=',', dtype=str )
     pl = d[:,0]
     RpRE = np.array(d[:,2],dtype=float)
     TeqK = np.array(d[:,3],dtype=float)
-    titleStr = 'JWST Cycle 1 targets that will be observed GTO + GO'
-    titleStr += '\nIncludes all modes and observation types '
-    titleStr += '(transits, eclipses, phase curves)'
-    fig, ax, ax2 = generateBasicAxis( wideFormat=True, showLegend=False, \
-                                      titleStr=titleStr )
-    Tgrid, Rgrid = drawGrid( ax, surveyGrid='ACWG' )
-    ax.plot( TeqK, RpRE, 'ok' )
+    obsType = np.array(d[:,4],dtype=int)
+    n = len( RpRE )
+    ixs0 = np.arange( n )
+    ixs1 = ixs0[( obsType==1 )] # transits
+    ixs2 = ixs0[( obsType==2 )] # eclipses
+    ixs3 = ixs0[( obsType==3 )] # phC
+    #ixs2a = ixs0[( obsType==1 )+(obsType==3)] # transits + phC
+    #ixs2b = ixs0[( obsType==2 )+(obsType==3)] # eclipses + phC
+
+    titleStr0 = 'JWST Cycle 1 targets that will be observed GTO + GO'
+    titleStr0 += '\nNo distinction for different instrument modes '
+    titleStr1 = '{0}\ntransits + eclipses + phase curves'.format( titleStr0 )
+    titleStr2a = '{0}\ntransmission (i.e. transits + phase curves)'.format( titleStr0 )
+    titleStr2b = '{0}\nemission (i.e. eclipses + phase curves)'.format( titleStr0 )
+    c1 = 'Orange'
+    c2 = 'Cyan'
+    c3 = 'Magenta'
+    l1 = 'Transits'
+    l2 = 'Eclipses'
+    l3 = 'Phase curves'
+    ms0 = 10
+    fp = 1.5
+    z = [ [ titleStr1,[ [ixs1,'o',c1,l1,ms0], [ixs2,'d',c2,l2,ms0], \
+                        [ixs3,'*',c3,l3,fp*ms0] ] ], \
+          [ titleStr2b,[ [ixs2,'d',c2,l2,ms0], [ixs3,'*',c3,l3,fp*ms0] ] ], \
+          [ titleStr2a,[ [ixs1,'o',c1,l1,ms0], [ixs3,'*',c3,l3,fp*ms0] ] ] ]
+
+
+    for i in z:
+        fig, ax, ax2 = generateAxisScatter( wideFormat=True, titleStr='', showLegend=False )
+        title_fs = 18
+        toplineY = 0.98
+        fig.text( 0.02, toplineY-0.02, i[0], fontsize=title_fs, weight='heavy', \
+                  rotation=0, horizontalalignment='left', verticalalignment='top' )
+
+        #fig, ax, ax2 = generateBasicAxis( wideFormat=True, showLegend=False, \
+        #                                  titleStr=titleStr )
+        survey = { 'surveyName':'ACWG', 'gridEdges':gridEdgesFunc }
+        Tgrid, Rgrid = drawGrid( ax, survey=survey )
+        for j in i[1]:
+            print( j[1] )
+            ax.plot( TeqK[j[0]], RpRE[j[0]], j[1], mfc=j[2], mec='none', \
+                     alpha=0.8, ms=j[4], label='' )
+            ax.plot( TeqK[j[0]], RpRE[j[0]], j[1], mfc='none', mec='Black', \
+                     alpha=1, ms=j[4], label='' )
+            ax.plot( [-TeqK[j[0]][0]], [-RpRE[j[0]][0]], j[1], mfc=j[2], mec='Black', \
+                     alpha=1, ms=j[4], label=j[3] )
+        ax.legend( ncol=len( i[1] ), loc='lower right', bbox_to_anchor=[0.8,1], fontsize=16 )
+        #pdb.set_trace()
     pdb.set_trace()
 
 
@@ -43,37 +91,40 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={} ):
     return None
 
 
-def TOIs( ipath='toiProperties.pkl', survey={}, months='all' ):
+def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all' ):
     """
     """
     wideFormat = True
     addSignature = False
     DecRestrictions = [ ['DecAll',None,None], ['DecNth',-20,None], ['DecSth',None,20] ]
-    if months=='completeSet':
-        months = [ 'RAall', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', \
-                   'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ]
+    #if months=='completeSet':
+    #    months = [ 'RAall', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', \
+    #               'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec' ]
+    RARestrictions = Utils.getRARanges()
+    if RARanges=='completeSet':
+        RARestrictions += [ [ 0, 24 ] ]
     opaths = {}
     for i in DecRestrictions:
         opaths[i[0]] = {}
-        for m in months:
-            if m=='RAall':
-                RA = [ None, None ]
+        for RA in RARestrictions:
+            if RARanges=='all':
+                r = 'RAall'
             else:
-                RA = Utils.getRARange( m )
+                r = 'RA{0:.0f}-{1:.0f}h'.format( RA[0], RA[1] )
             figPaths = transmissionGridTOIs( ipath=ipath, wideFormat=wideFormat, \
                                              addSignature=addSignature, survey=survey, \
                                              RAMin_hr=RA[0], RAMax_hr=RA[1], \
                                              DecMin_deg=i[1], DecMax_deg=i[2] )
-            opaths[i[0]][m] = []
+            opaths[i[0]][r] = []
             for f in figPaths: # PDFs and PNGs
                 for k in list( f.keys() ):
                     opath = f[k]
                     if f[k].find( '.pdf' )>0:
-                        fnew = f[k].replace( '.pdf', '_{0}_{1}.pdf'.format( i[0], m ) )
+                        fnew = f[k].replace( '.pdf', '_{0}_{1}.pdf'.format( i[0], r ) )
                     elif opath.find( '.png' )>0:
-                        fnew = f[k].replace( '.png', '_{0}_{1}.png'.format( i[0], m ) )
+                        fnew = f[k].replace( '.png', '_{0}_{1}.png'.format( i[0], r ) )
                     os.rename( f[k], fnew )
-                    opaths[i[0]][m] += [ fnew ]
+                    opaths[i[0]][r] += [ fnew ]
             plt.close( 'all' )
     return opaths
 
@@ -662,13 +713,15 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, TSM, pl, cgrid=None, titleStr='', \
         dySubTitle = 0.015
     fig.text( 0.08, subtitleY, TSMstr, c='green', fontsize=14, \
               horizontalalignment='left', verticalalignment='bottom' )
-    otherNotes = 'Grey points to not meet TSM thresholds'
-    fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
-              fontsize=14, horizontalalignment='left', verticalalignment='top' )
+    #otherNotes = 'Grey points to not meet TSM thresholds'
+    #fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
+    #          fontsize=14, horizontalalignment='left', verticalalignment='top' )
     otherNotes = 'No bright limits have been applied\n'
     otherNotes += 'Numbers in square brackets are TSM values'    
-    fig.text( 0.08, subtitleY-2.7*dySubTitle, otherNotes, c='black', \
+    fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
+    #fig.text( 0.08, subtitleY-2.7*dySubTitle, otherNotes, c='black', \
+    #          fontsize=14, horizontalalignment='left', verticalalignment='top' )
 
     dx = 0.02*( xLines.max()-xLines.min() )
     dy = 0.03*( yLines.max()-yLines.min() )
@@ -801,8 +854,11 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True ):
         subtitleY = 0.925
         dySubTitle = 0.015
     ax = fig.add_axes( [ xlow, ylow, axw, axh ] )
-    axLegend = fig.add_axes( [ xlow2, ylow2, axw2, 0.09*axh ] )
-    addStellarSpectralTypeLegend( axLegend, ms=8, text_fs=10 )
+    if showLegend==True:
+        axLegend = fig.add_axes( [ xlow2, ylow2, axw2, 0.09*axh ] )
+        addStellarSpectralTypeLegend( axLegend, ms=8, text_fs=10 )
+    else:
+        axLegend = None
     ax = formatAxes( ax, whichType=whichType )
     label_fs = 16
     if whichType=='RpTeq':

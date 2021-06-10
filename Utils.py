@@ -330,9 +330,9 @@ def PlanckFuncSI( wavSI, T ):
     Returns the Planck spectrum in cgs units given 
     a wavelength range and temperature.
     """
-    hSI = np.float128( 6.62607015e-34 ) # Planck constant (J*s)
-    cSI = np.float128( 2.9979245800e8 ) # speed of light (m/s)
-    kSI = np.float128( 1.380649e-23 ) # Boltzman constant (J/K)
+    hSI = np.longdouble( 6.62607015e-34 ) # Planck constant (J*s)
+    cSI = np.longdouble( 2.9979245800e8 ) # speed of light (m/s)
+    kSI = np.longdouble( 1.380649e-23 ) # Boltzman constant (J/K)
     c0 =  2.*hSI*( cSI**2. )/( wavSI**5. )
     c1 = hSI*cSI/kSI/T
     irrSI = c0/( np.exp( c1/wavSI ) - 1. ) # radiance
@@ -378,6 +378,15 @@ def getTSMStr_REDUNDANT( thresholdTSM ):
     return TSMStr
 
 
+def getRARanges():
+    m = 4
+    RAedges = np.arange( 0, 24+m, m )
+    n = len( RAedges )-1
+    RARanges = []
+    for i in range( n ):
+        RARanges += [ [ RAedges[i], RAedges[i+1] ] ]
+    return RARanges
+    
 def getRARange( month ):
     # RAmid is approximately the sidereal angle (i.e. overhead RA) at
     # midnight on the 20th day of the month.
