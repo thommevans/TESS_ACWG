@@ -53,6 +53,7 @@ def TOIs( csvIpath='', pklOdir='' ):
     pickle.dump( zOut, ofile )
     ofile.close()
     print( '\nSaved:\n{0}\n'.format( opath ) )
+
     return opath
 
 def predictedTESS( version=1 ):
@@ -275,27 +276,6 @@ def readConfirmedNExScI( fpath ):
                                     zAll['TstarK'], zAll['Kmag'] )
     return zAll, zMissing, dateStr
 
-
-def addMissingInsol( z ):
-    """
-    Relations taken from this page:
-    https://exoplanetarchive.ipac.caltech.edu/docs/poet_calculations.html
-    """
-    TsK = z['TstarK']
-    RsRS = z['RsRS']
-    LsLS = ( RsRS**2. )*( ( TsK/TEFFK_SUN )**4. )
-    Insol = LsLS*( ( 1./z['aAU'] )**2. )
-    ixs = ( np.isfinite( z['Insol'] )==False )
-    z['Insol'][ixs] = Insol[ixs]
-
-    #ix = z['planetName']=='GJ 1132 b'
-    #print( ix.sum() )
-    #print( z['Insol'][ix] )
-    #pdb.set_trace()
-    return z
-    
-
-
 def readTOIsNExScI( fpath ):
     dateStr = getDateStr( fpath, whichList='TOIs' )
     zRaw = readRawTOIsNExScI( fpath )
@@ -315,11 +295,11 @@ def readTOIsNExScI( fpath ):
         if np.isfinite( Teff[i] )*np.isfinite( logg[i] ):
             star = Utils.modelStellarSpectrum( Teff[i], logg[i], FeH=0 )
             zAll['Jmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                 outputMag='J', vega=vega, star=star )
+                                                  outputMag='J', vega=vega, star=star )
             zAll['Hmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                 outputMag='H', vega=vega, star=star )
+                                                  outputMag='H', vega=vega, star=star )
             zAll['Kmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                 outputMag='Ks', vega=vega, star=star )
+                                                  outputMag='Ks', vega=vega, star=star )
         else:
             zAll['Jmag'][i] = np.nan
             zAll['Hmag'][i] = np.nan
@@ -328,12 +308,33 @@ def readTOIsNExScI( fpath ):
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
                                     zAll['TstarK'], zAll['Kmag'] )
+    zAll['MsMS'] = Utils.computeStellarMass( zAll['RsRS'], zAll['loggstarCGS'])
+    
+    zAll['K'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
+
     zMissing = {}
     for k in ['TSM','ESM']:
         zMissing[k] = zAll['planetName'][np.isfinite( zAll[k] )==False]
     return zAll, zMissing, dateStr
 
+def addMissingInsol( z ):
+    """
+    Relations taken from this page:
+    https://exoplanetarchive.ipac.caltech.edu/docs/poet_calculations.html
+    """
+    TsK = z['TstarK']
+    RsRS = z['RsRS']
+    LsLS = ( RsRS**2. )*( ( TsK/TEFFK_SUN )**4. )
+    Insol = LsLS*( ( 1./z['aAU'] )**2. )
+    ixs = ( np.isfinite( z['Insol'] )==False )
+    z['Insol'][ixs] = Insol[ixs]
 
+    #ix = z['planetName']=='GJ 1132 b'
+    #print( ix.sum() )
+    #print( z['Insol'][ix] )
+    #pdb.set_trace()
+    return z
+    
 def addUnits( z ):
     
     # Stellar masses and radii:
@@ -751,3 +752,4 @@ def readRawTOIsNExScI( fpath ):
     z['RpLowErrRJ'] = z['RpLowErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpRs'] = ( z['RpValRE']*Utils.REARTH_SI )/( z['RsRS']*Utils.RSUN_SI )
     return z
+

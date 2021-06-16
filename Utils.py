@@ -2,6 +2,7 @@ import pdb, sys, os, time
 import numpy as np
 import matplotlib.pyplot as plt
 import pysynphot
+import math
 
 """
 readStellarTrack()
@@ -378,6 +379,15 @@ def getTSMStr_REDUNDANT( thresholdTSM ):
     return TSMStr
 
 
+def getRARanges():
+    m = 4
+    RAedges = np.arange( 0, 24+m, m )
+    n = len( RAedges )-1
+    RARanges = []
+    for i in range( n ):
+        RARanges += [ [ RAedges[i], RAedges[i+1] ] ]
+    return RARanges
+    
 def getRARange( month ):
     # RAmid is approximately the sidereal angle (i.e. overhead RA) at
     # midnight on the 20th day of the month.
@@ -481,3 +491,28 @@ def getAllStarColors():
     SpTs = [ 'late-M', 'early-M', 'late-K', 'early-K', \
              'late-G', 'early-G', 'late-F', 'early-F', 'OBA' ]
     return c, SpTs
+
+def computeStellarMass( RsRS, loggstarCGS ):
+
+    gStarSI = 10**loggstarCGS / 100 # converts log(g)[cm/s^2] to g [m/s^2]
+    RsRS = RsRS * RSUN_SI # converts stellar radius from solar unit to SI 
+    MsMS = gStarSI * RsRS**2 / GRAV_SI
+    MsMS /= MSUN_SI # converts stellar mass to solar unit
+    
+    return MsMS
+
+def computeRVSemiAmp( Pday, MpME, MsMS ):
+    """
+    Equation from: https://exoplanetarchive.ipac.caltech.edu/docs/poet_calculations.html
+    """
+    MpMJ = MpME * MEARTH_SI / MJUP_SI # converts mass from Earth unit to Jupiter unit
+    i = math.pi/2
+    e = 0
+    
+    K = 203 * (Pday)**(-1/3) * \
+        ((MpMJ * math.sin(i)) / (MsMS + 9.458e-4 * (MpMJ)**(2/3))) * \
+        (1 / (1 - e**2)**(1/2))
+
+    return K
+
+
