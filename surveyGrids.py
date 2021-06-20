@@ -71,7 +71,7 @@ def quickCycle1():
     pdb.set_trace()
 
 
-def Confirmed( ipath='confirmedProperties.pkl', survey={} ):
+def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
     """
     """
     wideFormat = True
@@ -81,7 +81,8 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={} ):
     figPaths = transmissionGridConfirmed( ipath=ipath, wideFormat=wideFormat, \
                                           showNeptuneRadius=showNeptuneRadius, \
                                           showJupiterRadius=showJupiterRadius, \
-                                          survey=survey, addSignature=addSignature )
+                                          survey=survey, addSignature=addSignature, \
+                                          SMFlag = SMFlag )
     for f in figPaths: # PDFs and PNGs
         for k in list( f.keys() ):
             fnew = f[k].replace( 'Confirmed_', 'Confirmed_{0}_'\
@@ -91,7 +92,7 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={} ):
     return None
 
 
-def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all' ):
+def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM' ):
     """
     """
     wideFormat = True
@@ -114,7 +115,8 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all' ):
             figPaths = transmissionGridTOIs( ipath=ipath, wideFormat=wideFormat, \
                                              addSignature=addSignature, survey=survey, \
                                              RAMin_hr=RA[0], RAMax_hr=RA[1], \
-                                             DecMin_deg=i[1], DecMax_deg=i[2] )
+                                             DecMin_deg=i[1], DecMax_deg=i[2],
+                                             SMFlag = SMFlag )
             opaths[i[0]][r] = []
             for f in figPaths: # PDFs and PNGs
                 for k in list( f.keys() ):
@@ -130,18 +132,19 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all' ):
 
 
 #############################################################################
-# Transmission spectroscopy survey:
+# Transmission/Emission spectroscopy survey:
 
 
 def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
                           addSignature=True, survey={}, \
                           RAMin_hr=None, RAMax_hr=None, \
-                          DecMin_deg=None, DecMax_deg=None ):
+                          DecMin_deg=None, DecMax_deg=None, \
+                          SMFlag = 'TSM' ):
     """
     TOIs that have not been confirmed.
     """
     showGrid = True
-    z, dateStr = readTOIProperties( ipath=ipath )
+    z, dateStr = readTOIProperties( ipath=ipath, SMFlag=SMFlag )
     ostr = 'TOIs'
 
     n0 = len( z['planetName'] )
@@ -156,18 +159,18 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec]
     
     pl = z['planetName'][ixs]
-    TSM = z['TSM'][ixs]
     Teq = z['TeqK'][ixs]
     Ts = z['TstarK'][ixs]
     MpVal = z['MpValME'][ixs]
     RpVal = z['RpValRE'][ixs]
+    SM = z['SM'][ixs]
     
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, TSM, pl, titleStr=titleStr, \
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, titleStr=titleStr, \
                                dateStr=dateStr, survey=survey, RADecStr=RADecStr )
-    onames['2'] = '{0}_gridTopTSMs.pdf'.format( ostr )
+    onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
     toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
@@ -207,12 +210,12 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     return opathsPDF, opathsPNG
     
     
-def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=True ):
+def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=True, SMFlag = 'TSM' ):
     """
     Confirmed TESS planets without published mass.
     """
     showGrid = True
-    z = readConfirmedTESSProperties( publishedMasses=publishedMasses )
+    z = readConfirmedTESSProperties( publishedMasses=publishedMasses, SMFlag=SMFlag )
     if publishedMasses==True:
         ostr = 'ConfirmedWithMassTESS'
         titleStr = 'Confirmed TESS planets with peer-reviewed published masses'
@@ -227,7 +230,7 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Tr
     ixs = np.arange( n0 )[ixs0]#[ixs2][ixs3]
     print( '{0:.0f} planets have >5-sigma mass measurements.'.format( len( ixs ) ) )
     pl = z['planetName'][ixs]
-    TSM = z['TSM'][ixs]
+    SM = z['SM'][ixs]
     Teq = z['TeqK'][ixs]
     Ts = z['TstarK'][ixs]
     MpVal = z['MpValME'][ixs]
@@ -238,8 +241,8 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Tr
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, TSM, pl, titleStr=titleStr )
-    onames['2'] = '{0}_gridTopTSMs.pdf'.format( ostr )
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr )
+    onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     if publishedMasses==False:
         fig2.text( 0.10, 0.905-0.025, 'Masses estimated from empirical relation', \
@@ -253,7 +256,7 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Tr
     figs = { '2':fig2 }
     print( '\nSaved:' )
     if wideFormat==True:
-        odirExt = 'survey{0}/wideFormat'.format( surveyName )
+        odirExt = 'survey{0}/wideFormat'.format( surveyName ) #surveyName is undefined
     else:
         odirExt = 'survey{0}/narrowFormat'.format( surveyName )
     odir = os.path.join( FIGDIR, odirExt )
@@ -273,11 +276,11 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Tr
     
 def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True, \
                                survey={}, addSignature=False, showGrid=True, \
-                               showNeptuneRadius=False, showJupiterRadius=False ):
+                               showNeptuneRadius=False, showJupiterRadius=False, SMFlag='TSM' ):
     """
     
     """
-    z, dateStr = readConfirmedProperties( ipath=ipath )
+    z, dateStr = readConfirmedProperties( ipath=ipath, SMFlag = SMFlag )
     ostr = 'Confirmed'
     #titleStr = 'Confirmed planets (empirical mass-radius relation used where necessary)'
 
@@ -290,7 +293,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     print( '{0:.0f} planets have mass measurements or estimates'.format( len( ixs ) ) )
     print( 'and orbit stars with radii 0.05-10 R_Sun' )
     pl = z['planetName'][ixs]
-    TSM = z['TSM'][ixs]
+    SM = z['SM'][ixs]
     Teq = z['TeqK'][ixs]
     Ts = z['TstarK'][ixs]
     MpVal = z['MpValME'][ixs]
@@ -304,7 +307,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     onames = {}
     
     # Radius-temperature plot for all planets with well-measured mass:
-    fig1a, ax1a = plotTeqRpScatter( pl, Teq, RpVal, Ts, TSM, TESS, applyTSMcuts=False, \
+    fig1a, ax1a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, applySMcuts=False, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr, \
                                     indicateTESS=False, dateStr=dateStr, \
@@ -313,8 +316,8 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     onames['1a'] = '{0}_allPlanets.pdf'.format( ostr )
     
     # Radius-temperature plot for all planets with well-measured mass
-    # and TSM cuts applied:
-    fig1b, ax1b = plotTeqRpScatter( pl, Teq, RpVal, Ts, TSM, TESS, applyTSMcuts=True, \
+    # and SM cuts applied:
+    fig1b, ax1b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, applySMcuts=True, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr, \
                                     indicateTESS=False, dateStr=dateStr, \
@@ -323,25 +326,25 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     #TSMStr = Utils.getTSMStr( thresholdTSM )
     #fig1b.text( 0.5, 0.93, TSMStr, c='green', fontsize=14, \
     #            horizontalalignment='center', verticalalignment='bottom' )
-    onames['1b'] = '{0}_TSMcutsApplied.pdf'.format( ostr )
+    onames['1b'] = '{0}_{1}cutsApplied.pdf'.format( ostr, SMFlag )
                                     
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, TSM, pl, titleStr=titleStr, \
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr, \
                                dateStr=dateStr, survey=survey, RADecStr=RADecStr  )
     fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                horizontalalignment='left', verticalalignment='top' )
-    onames['2'] = '{0}_gridTopTSMs.pdf'.format( ostr )
+    onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     # Scatter plots without the grid:
-    fig3a, ax3a = plotTeqRpScatter( pl, Teq, RpVal, Ts, TSM, TESS, applyTSMcuts=False, \
+    fig3a, ax3a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, applySMcuts=False, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr, \
                                     indicateTESS=True, dateStr=dateStr, \
                                     showNeptuneRadius=showNeptuneRadius, \
                                     showJupiterRadius=showJupiterRadius )
     onames['3a'] = '{0}_allPlanets_showsTESS.pdf'.format( ostr )
-    fig3b, ax3b = plotTeqRpScatter( pl, Teq, RpVal, Ts, TSM, TESS, applyTSMcuts=True, \
+    fig3b, ax3b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, applySMcuts=True, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr,
                                     indicateTESS=True, dateStr=dateStr, \
@@ -350,7 +353,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     #TSMStr = Utils.getTSMStr( thresholdTSM )
     #fig3b.text( 0.5, 0.935, TSMStr, c='green', fontsize=14, \
     #            horizontalalignment='center', verticalalignment='bottom' )
-    onames['3b'] = '{0}_TSMcutsApplied_showsTESS.pdf'.format( ostr )
+    onames['3b'] = '{0}_{1}cutsApplied_showsTESS.pdf'.format( ostr, SMFlag )
 
     if addSignature==True:
         for ax in [ax1a,ax1b,ax2,ax3a,ax3b]:
@@ -387,11 +390,14 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
                                surveyModule='ACWG', showGrid=True, \
                                showStellarTrack=True, showNeptuneRadius=True, \
                                showJupiterRadius=True, crossHair=None, \
-                               addSignature=False ):
+                               addSignature=False, SMFlag='TSM' ):
     """
     Focusing on TESS predicted yield, not worrying about survey grid.
     This routine is currently out of date.
     """
+
+    #Unchanged for ESM because no references
+
     z = readConfirmedProperties()
     ostr = 'predictedTESS'
     
@@ -557,10 +563,6 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
 
 
 #############################################################################
-# Emission spectroscopy survey:
-
-
-#############################################################################
 # Utility routines:
 
 def printTopPredictedSubNeptunes( z, onlySubNeptunes=True ):
@@ -621,6 +623,9 @@ def printTopPredictedSubNeptunes( z, onlySubNeptunes=True ):
 
 def plotTeqRpTESS( ax, showSolarSystem=True, showNeptuneRadius=True, dateStr='', \
                    showJupiterRadius=True, titleStr='' ):
+
+    #Unchanged for ESM because only referenced in transmissionPredictedTESS
+
     t = readPredictedProperties()
     m = 10
     ixs = ( t['cad2min']==1 )*( ( t['Vmag']<m )+( t['Jmag']<m )+( t['Kmag']<m ) )
@@ -680,8 +685,11 @@ def addSignatureToAxis( ax ):
     return None
 
 
-def plotTeqRpGrid( TeqK, RpRE, TstarK, TSM, pl, cgrid=None, titleStr='', \
+def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
                    RADecStr='', dateStr='', wideFormat=True, survey={} ):
+    
+    #SM- (str: type, float: value)
+
     if cgrid is None:
         cgrid = np.array( [ 201, 148, 199 ] )/256.
     fig, ax, ax2 = generateAxisGrid( wideFormat=wideFormat, titleStr=titleStr, \
@@ -698,8 +706,9 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, TSM, pl, cgrid=None, titleStr='', \
     for i in range( nR ):
         ax.plot( [xLines.min(),xLines.max()], [yLines[i],yLines[i]], '-', \
                  c=cgrid, zorder=1 )
-    ax, TSMstr = addTopTSMs( ax, pl, TSM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                             xLines, yLines, survey=survey )
+    ax, SMstr = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
+                            xLines, yLines, survey=survey )
+
     formatAxisTicks( ax )
     ax.xaxis.set_ticks( xLines, minor=False )
     ax.yaxis.set_ticks( yLines, minor=False )
@@ -711,13 +720,13 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, TSM, pl, cgrid=None, titleStr='', \
     else:
         subtitleY = 0.925
         dySubTitle = 0.015
-    fig.text( 0.08, subtitleY, TSMstr, c='green', fontsize=14, \
+    fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
               horizontalalignment='left', verticalalignment='bottom' )
     #otherNotes = 'Grey points to not meet TSM thresholds'
     #fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
     #          fontsize=14, horizontalalignment='left', verticalalignment='top' )
     otherNotes = 'No bright limits have been applied\n'
-    otherNotes += 'Numbers in square brackets are TSM values'    
+    otherNotes += 'Numbers in square brackets are {0} values'.format( SM[0] )    
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
     #fig.text( 0.08, subtitleY-2.7*dySubTitle, otherNotes, c='black', \
@@ -747,8 +756,10 @@ def formatAxisTicks( ax ):
     ax.yaxis.set_tick_params( length=tlm, width=tw, which='minor' )
     return ax
 
-def addTopTSMs( ax, pl, TSM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
+def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                 xLines, yLines, survey={} ):
+
+    #SM- (str: type, list: values)
         
     framework = survey['framework']
     nx = len( xLines )-1
@@ -768,18 +779,23 @@ def addTopTSMs( ax, pl, TSM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
         for j in range( ny ): # loop over radius rows
             # Indices inside box above the TSM threshold:
             RpREj = 0.5*( Rgrid[j]+Rgrid[j+1] )
-            TSMj, TSMstr = survey['thresholdTSM']( RpREj, framework=framework )
+
+            if SM[0] == 'TSM':
+                SMj, SMstr = survey['thresholdTSM']( RpREj, framework=framework )
+            elif SM[0] == 'ESM':
+                SMj, SMstr = survey['thresholdESM']( RpREj, framework=framework )
+
             #if ( thresholdTSM=='ACWG' )+( thresholdTSM=='TOIs' ):
             #    TSMj = Utils.getThresholdTSM( RpREj, framework=thresholdTSM )
             #else:
             #    TSMj = thresholdTSM
             ixsj = ( RpRE>=Rgrid[j] )*( RpRE<Rgrid[j+1] )
             #ixsij = ixs0[ixsi*ixsj*( TSM>0)]
-            ixsij = ixs0[ixsi*ixsj*( TSM>TSMj)]
+            ixsij = ixs0[ixsi*ixsj*( SM[1]>SMj )]
             nij = len( ixsij )
             if nij>0:
-                # Order by decreasing TSM:
-                ixso = np.argsort( TSM[ixsij] )
+                # Order by decreasing SM:
+                ixso = np.argsort( SM[1][ixsij] )
                 ixs = ixsij[ixso][::-1]
                 nwrite = min( [ nij, nList ] )
                 dy = ( yLines[j+1]-yLines[j] )/float(nList+0.5)
@@ -787,7 +803,7 @@ def addTopTSMs( ax, pl, TSM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                 for k in range( nwrite ):
                     ytxt = y0-k*dy
                     plStr = pl[ixs][k].replace( ' ', '' )
-                    plStr = '{0} [{1:.0f}]'.format( plStr, TSM[ixs][k] )
+                    plStr = '{0} [{1:.0f}]'.format( plStr, SM[1][ixs][k] )
                     if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ):
                         c = 'Silver'
                         wt = 'normal'
@@ -799,7 +815,7 @@ def addTopTSMs( ax, pl, TSM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                     ck = Utils.getStarColor( TstarK[ixs][k] )
                     ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
                 #pdb.set_trace()
-    return ax, TSMstr
+    return ax, SMstr
 
 
 def generateAxisScatter( xlim=[0,3100], ylim=[0,26], wideFormat=False, \
@@ -973,14 +989,16 @@ def tickLogFormat( y, pos ):
 
     
 
-def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, TSM, TESS, ms=8, alpha=1, \
-                      starColors=True, applyTSMcuts=False, survey={}, \
+def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, SM, TESS, ms=8, alpha=1, \
+                      starColors=True, applySMcuts=False, survey={}, \
                       showGrid=True, indicateTESS=False, showSolarSystem=False, \
                       showStellarTrack=False, showNeptuneRadius=True, \
                       showJupiterRadius=True, titleStr='', wideFormat=False, \
                       dateStr='' ):
     """
     """
+    #SM- (str: type, list: values)
+
     n = len( Teq )
     nTESS = np.sum( TESS )
     cTESS = np.array( [ 213, 128, 255 ] )/256.
@@ -1000,8 +1018,13 @@ def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, TSM, TESS, ms=8, alpha=1, \
             c = Utils.getStarColor( Ts[i] )
         else:
             c = c0
-        TSMi, TSMstr = survey['thresholdTSM']( RpVal[i], framework=framework )
-        if applyTSMcuts==False: # plotting everything regardless of TSM
+        
+        if SM[0] == 'TSM':
+            SMi, SMstr = survey['thresholdTSM']( RpVal[i], framework=framework )
+        elif SM[0] == 'ESM':
+            SMi, SMstr = survey['thresholdESM']( RpVal[i], framework=framework )
+
+        if applySMcuts==False: # plotting everything regardless of SM
             if ( indicateTESS==True )*( TESS[i]==1 ):
                 ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=ms, alpha=alpha, \
                          mfc=c, mec=c, zorder=zTESS+nTESS+i )
@@ -1010,8 +1033,8 @@ def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, TSM, TESS, ms=8, alpha=1, \
             else:
                 ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=ms, alpha=alpha, \
                          mfc=c, mec=c, zorder=z0+i )
-                
-        elif TSM[i]>TSMi: # if TSM cuts applied, this one is high enough
+            
+        elif SM[1][i]>SMi: # if SM cuts applied, this one is high enough
             if ( indicateTESS==True )*( TESS[i]==1 ):
                 ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=ms, alpha=alpha, \
                          mfc=c, mec=c, zorder=zTESS+nTESS+i )
@@ -1034,10 +1057,10 @@ def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, TSM, TESS, ms=8, alpha=1, \
     else:
         subtitleY = 0.925
         dySubTitle = 0.015
-    if applyTSMcuts==True:
-        fig.text( 0.08, subtitleY, TSMstr, c='green', fontsize=14, \
+    if applySMcuts==True:
+        fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
                   horizontalalignment='left', verticalalignment='bottom' )
-        otherNotes = 'Grey points do not meet TSM thresholds'
+        otherNotes = 'Grey points do not meet {0} thresholds'.format( SM[0] )
         fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
                   fontsize=14, horizontalalignment='left', verticalalignment='top' )
         
@@ -1099,7 +1122,7 @@ def addStellarSpectralTypeLegend( ax, ms=10, text_fs=12 ):
         
 
 
-def readConfirmedProperties( ipath='confirmedProperties.pkl' ):
+def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
     """
     Returns properties for all confirmed planets. For planets with
     available radius but no mass measurement, an empirical relation
@@ -1118,7 +1141,6 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl' ):
     Insol = z['Insol']
     TstarK = z['TstarK']
     T14hr = z['T14hr']
-    TSM = z['TSM']
     b = z['b']
     RpRs = z['RpRs']
     Vmag = z['Vmag']
@@ -1132,6 +1154,12 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl' ):
     MpLsigME = z['MpLowErrME']
     MpUsigME = z['MpUppErrME']
     TESS = z['discoveredByTESS']
+
+    if SMFlag == 'TSM':
+        SM = z['TSM']
+    elif SMFlag == 'ESM':
+        SM = z['ESM']
+
     n0 = len( planetName )
     ixs = np.arange( n0 )[np.isnan( MpValME )*np.isfinite( RpValRE )]
     n = len( ixs )
@@ -1140,14 +1168,20 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl' ):
         MpUncFill = 1e9 #min( [ 0.1, MpValME[ixs[i]]/5.01 ] )
         MpLsigME[ixs[i]] = MpUncFill
         MpUsigME[ixs[i]] = MpUncFill
-    TSM[ixs] = Utils.computeTSM( RpValRE[ixs], MpValME[ixs], \
-                                 RsRS[ixs], TeqK[ixs], Jmag[ixs] )
-    ixs = np.isfinite( TeqK )*np.isfinite( TSM )*np.isfinite( RpValRE )
+    
+    if SMFlag == 'TSM':
+        SM[ixs] = Utils.computeTSM( RpValRE[ixs], MpValME[ixs], \
+                                    RsRS[ixs], TeqK[ixs], Jmag[ixs] )
+    elif SMFlag == 'ESM':
+        RpRs = RpValRE/RsRS
+        SM[ixs] = Utils.computeESM( TeqK[ixs], RpRs[ixs], TstarK[ixs], Kmag[ixs] )
+
+    ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
     print( '\nReading in {0:.0f} planets total.'.format( n0 ) )
-    print( 'Returning {0:.0f} planets with radii, TSM, and Teq values.'\
-           .format( ixs.sum() ) )
+    print( 'Returning {0:.0f} planets with radii, {1}, and Teq values.'\
+           .format( ixs.sum(), SMFlag ) )
     outp = { 'planetName':planetName[ixs], 'TESS':TESS[ixs], \
-             'TSM':TSM[ixs], 'T14hr':T14hr[ixs], 'Vmag':Vmag[ixs], \
+             'SM':SM[ixs], 'T14hr':T14hr[ixs], 'Vmag':Vmag[ixs], \
              'Jmag':Jmag[ixs], 'Hmag':Hmag[ixs], 'Kmag':Kmag[ixs], \
              'b':b[ixs], 'RpRs':RpRs[ixs], 'TeqK':TeqK[ixs], 'Insol':Insol[ixs], \
              'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], 'aAU':aAU[ixs], \
@@ -1156,7 +1190,7 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl' ):
     return outp, z0['dateStr']
 
 
-def readTOIProperties( ipath='toiProperties.pkl' ):
+def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
     """
     """
     ifile = open( ipath, 'rb' )
@@ -1174,21 +1208,26 @@ def readTOIProperties( ipath='toiProperties.pkl' ):
     TeqK = z['TeqK']
     Jmag = z['Jmag']
     TstarK = z['TstarK']
-    TSM = z['TSM']
     RpValRE = z['RpValRE']
     MpValME = z['MpValME']
     RpRs = z['RpRs']
     Jmag = z['Jmag']
+
+    if SMFlag == 'TSM':
+        SM = z['TSM']
+    elif SMFlag == 'ESM':
+        SM = z['ESM']
+
     #planetName = []
     #n = len( toiNumbers )
     #for i in range( n ):
     #    planetName += [ 'TOI-{0}'.format( toiNumbers[i] ) ]
     #planetName = np.array( planetName, dtype=str )
-    ixs = np.isfinite( TeqK )*np.isfinite( TSM )*np.isfinite( RpValRE )
+    ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
     print( '\nReading in {0:.0f} TOIs total.'.format( n0 ) )
-    print( 'Returning {0:.0f} TOIs with radii, TSM, and Teq values.'\
-           .format( ixs.sum() ) )
-    outp = { 'planetName':planetName[ixs], 'TSM':TSM[ixs], 'RpRs':RpRs[ixs], \
+    print( 'Returning {0:.0f} TOIs with radii, {1}, and Teq values.'\
+           .format( ixs.sum(), SMFlag ) )
+    outp = { 'planetName':planetName[ixs], 'SM':SM[ixs], 'RpRs':RpRs[ixs], \
              'RA_deg':RA[ixs], 'RA_hr':RAhr[ixs], 'Dec_deg':Dec[ixs], \
              'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], 'Jmag':Jmag[ixs], \
              'RpValRE':RpValRE[ixs], 'MpValME':MpValME[ixs] }
@@ -1237,7 +1276,7 @@ def readNoMassTESSProperties():
     return outp
 
 
-def readConfirmedTESSProperties( publishedMasses=True ):
+def readConfirmedTESSProperties( publishedMasses=True, SMFlag = 'TSM' ):
     """
     Returns properties of confirmed TESS planets.
     """
@@ -1249,8 +1288,8 @@ def readConfirmedTESSProperties( publishedMasses=True ):
     RsRS = z['RsRS']
     TeqK = z['TeqK']
     Jmag = z['Jmag']
+    Kmag = z['Kmag'] #Assuming we get Kmag from archive. If not, how is it computed?
     TstarK = z['TstarK']
-    TSM = z['TSM']
     RpValRE = z['RpValRE']
     RpLsigRE = z['RpLowErrRE']
     RpUsigRE = z['RpUppErrRE']
@@ -1258,6 +1297,12 @@ def readConfirmedTESSProperties( publishedMasses=True ):
     MpLsigME = z['MpLowErrME']
     MpUsigME = z['MpUppErrME']
     TESS = z['discoveredByTESS']
+
+    if SMFlag == 'TSM':
+        SM = z['TSM']
+    elif SMFlag == 'ESM':
+        SM = z['ESM']
+
     if publishedMasses==True:
         print( '\nReading confirmed TESS planets with peer-reviewed published masses:' )
         ixs = np.isfinite( TeqK )*np.isfinite( RpValRE )*np.isfinite( MpValME )*( TESS==1 )
@@ -1265,13 +1310,13 @@ def readConfirmedTESSProperties( publishedMasses=True ):
         for i in range( n ):
             print( '{0:.0f}. {1}'.format( i+1, planetName[ixs][i] ) )
         #print( '\nReading in {0:.0f} planets total.'.format( len( TSM ) ) )
-        print( 'Returning {0:.0f} planets with measured radii, TSM, and Teq values.'\
-               .format( ixs.sum() ) )
+        print( 'Returning {0:.0f} planets with measured radii, {1}, and Teq values.'\
+               .format( ixs.sum(), SMFlag ) )
 
         outp = { 'planetName':planetName[ixs], 'TESS':TESS[ixs], \
                  'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], \
                  'RpValRE':RpValRE[ixs], 'RpLsigRE':RpLsigRE[ixs], \
-                 'RpUsigRE':RpUsigRE[ixs], 'MpValME':MpValME[ixs], 'TSM':TSM[ixs] }        
+                 'RpUsigRE':RpUsigRE[ixs], 'MpValME':MpValME[ixs], 'SM':SM[ixs] }        
     else:
         print( '\nReading confirmed TESS planets lacking peer-reviewed published masses:' )
         ixs = np.isfinite( TeqK )*np.isfinite( RpValRE )*np.isnan( MpValME )*( TESS==1 )
@@ -1281,18 +1326,26 @@ def readConfirmedTESSProperties( publishedMasses=True ):
         #print( '\nReading in {0:.0f} planets total.'.format( len( TSM ) ) )
         print( 'Returning {0:.0f} planets with measured radii and Teq values.'\
                .format( ixs.sum() ) )
-        # Add in the estimated masses and then use these to compute estimated TSM values
-        # (ESM values should already be included as it doesn't require the mass):
-        MpValME = np.zeros( n )
-        for i in range( n ):
-            MpValME[i] = Utils.planetMassFromRadius( RpValRE[ixs][i] )
-        TSM = Utils.computeTSM( RpValRE[ixs], MpValME, RsRS[ixs], \
-                                TeqK[ixs], Jmag[ixs] )
-        print( 'Masses taken from empirical relation and used for TSM calculation.\n' )
+        
+        if SMFlag == 'TSM':
+            # Add in the estimated masses and then use these to compute estimated TSM values
+            # (ESM values should already be included as it doesn't require the mass):
+            MpValME = np.zeros( n )
+            for i in range( n ):
+                MpValME[i] = Utils.planetMassFromRadius( RpValRE[ixs][i] )
+
+            SM = Utils.computeTSM( RpValRE[ixs], MpValME, RsRS[ixs], \
+                                    TeqK[ixs], Jmag[ixs] )
+            print( 'Masses taken from empirical relation and used for TSM calculation.\n' )
+
+        if SMFlag == 'ESM':
+            RpRs = RpValRE/RsRS
+            SM = Utils.computeESM( TeqK[ixs], RpRs[ixs], TstarK[ixs], Kmag)
+
         outp = { 'planetName':planetName[ixs], 'TESS':TESS[ixs], \
                  'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], \
                  'RpValRE':RpValRE[ixs], 'RpLsigRE':RpLsigRE[ixs], \
-                 'RpUsigRE':RpUsigRE[ixs], 'MpValME':MpValME, 'TSM':TSM }
+                 'RpUsigRE':RpUsigRE[ixs], 'MpValME':MpValME, 'SM':SM[ixs] }
     return outp
 
 
@@ -1300,6 +1353,9 @@ def readWithMassTESSProperties():
     """
     Returns properties of confirmed TESS planets lacking published masses.
     """
+
+    #Unchanged for ESM because no references
+
     ifile = open( 'confirmedProperties.pkl', 'rb' )
     z0 = pickle.load( ifile )
     ifile.close()
@@ -1334,6 +1390,9 @@ def readWithMassTESSProperties():
 
 
 def readPredictedProperties( version=2 ):
+
+    #Unchanged for ESM because only referenced in plotTeqRpTESS
+
     iname = 'predictedProperties_v{0:.0f}.pkl'.format( version )
     ifile = open( iname, 'rb' )
     z = pickle.load( ifile )
