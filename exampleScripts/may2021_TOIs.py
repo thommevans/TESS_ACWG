@@ -7,6 +7,7 @@ ADIR = os.getcwd()
 
 ########################################################################
 # Step 1: Download the target list from NASA Exoplanet Archive.
+
 # TODO: Have routines that download the target lists without
 # having to do it manually.
 toiFpath = downloadTargetLists.targetsUnpublishedTOIs() # dummy call for now
@@ -20,7 +21,6 @@ toiFpath = downloadTargetLists.targetsUnpublishedTOIs() # dummy call for now
 
 toiPickle = processTargetLists.TOIs( csvIpath=toiFpath, pklOdir=ADIR )
 
-    
 ########################################################################
 # Step 3: Make the figures using the processed pickle file as input.
 survey = { 'surveyName':'ACWG', 'framework':'ACWG', \
