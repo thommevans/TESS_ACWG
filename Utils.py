@@ -1,8 +1,9 @@
-import pdb, sys, os, time
+import pdb, sys, os, time, requests, json
 import numpy as np
 import matplotlib.pyplot as plt
 import pysynphot
 import math
+from urllib.parse import quote as urlencode
 
 """
 readStellarTrack()
@@ -45,6 +46,70 @@ def modelStellarSpectrum( TeffK, loggCGS, FeH=0 ):
     sp = pysynphot.Icat( 'k93models', TeffK, FeH, loggCGS )
     star = [ sp.wave/1e4, sp.flux ]
     return star
+
+
+def JHKmags( TICIDs ):
+    
+
+    listtici = list( TICIDs )
+    
+    def mast_query( request ):
+          """
+          Perform a MAST query.
+        
+              Parameters
+              ----------
+              request (dictionary): The MAST request json object
+            
+          Returns head,content where head is the response HTTP headers, and content is the returned data
+          """
+        # Base API url
+          request_url='https://mast.stsci.edu/api/v0/invoke'
+        
+        # Grab Python Version
+          version =".".join(map(str, sys.version_info[:3]))
+        
+        # Perform the HTTP request
+          headers = {'Content-type': 'application/x-www-form-urlencoded',
+                    'Accept': 'text/plain',
+                    'User-agent':'python-requests/'+version}
+        
+        # Encoding the request as a json string
+          req_string = json.dumps(request)
+          req_string = urlencode(req_string)
+        
+        # Perform the HTTP request
+          resp = requests.post(request_url, data='request='+req_string, headers=headers)
+         
+        # Pull out the headers and response content
+          head = resp.headers
+          content = resp.content.decode('utf-8') 
+    
+          return head, content
+    
+    request = {'service':'Mast.Catalogs.Filtered.Tic', 'format':'json', \
+                                              'params':{'columns':'rad, mass', \
+                                              'filters':[{'paramName':'ID', 'values':listtici}]}}
+    headers, outString = mast_query( request )
+    dictquertemp = json.loads( outString )['data']
+    
+    magsDictByID = {}
+    
+    for planet in dictquertemp:
+        magsDictByID[planet['ID']] = {'Jmag':planet['Jmag'],'Hmag':planet['Hmag'],\
+                                      'Kmag':planet['Kmag']}
+    
+    magsDict = {}
+    mags = ['Jmag', 'Hmag', 'Kmag']
+    
+    for mag in mags:
+        maglist = []
+        for TICID in listtici:
+            planet = magsDictByID[int( TICID )]
+            maglist.append( planet[mag] )
+        magsDict[mag] = np.array( maglist, dtype=float )
+    
+    return magsDict
 
 
 def convertTmag( Tmag, TeffK, loggCGS, outputMag='J', vega=None, star=None ):

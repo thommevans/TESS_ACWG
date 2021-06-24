@@ -2,7 +2,8 @@ import pdb, sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from . import Utils
+import Utils
+
 
 """
 Module for pre-processing ASCII/csv files into pickle files that are 
@@ -277,33 +278,39 @@ def readConfirmedNExScI( fpath ):
     return zAll, zMissing, dateStr
 
 def readTOIsNExScI( fpath ):
+
     dateStr = getDateStr( fpath, whichList='TOIs' )
     zRaw = readRawTOIsNExScI( fpath )
     zAll = zRaw
     zAll['MpValME'] = Utils.planetMassFromRadius( zAll['RpValRE'], \
                                                   whichRelation='Chen&Kipping2017' )
-    vega = Utils.spectrumVega( makePlot=False )
-    Teff = zAll['TstarK']
-    logg = zAll['loggstarCGS']
-    n = len( Teff )
-    zAll['Jmag'] = np.zeros( n )
-    zAll['Hmag'] = np.zeros( n )
-    zAll['Kmag'] = np.zeros( n )
-    for i in range( n ):
-        pl = zAll['planetName'][i]
-        print( 'Converting TOI Tmags... {0} ({1:.0f} of {2:.0f})'.format( pl, i+1, n ) )
-        if np.isfinite( Teff[i] )*np.isfinite( logg[i] ):
-            star = Utils.modelStellarSpectrum( Teff[i], logg[i], FeH=0 )
-            zAll['Jmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                  outputMag='J', vega=vega, star=star )
-            zAll['Hmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                  outputMag='H', vega=vega, star=star )
-            zAll['Kmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                  outputMag='Ks', vega=vega, star=star )
-        else:
-            zAll['Jmag'][i] = np.nan
-            zAll['Hmag'][i] = np.nan
-            zAll['Kmag'][i] = np.nan
+    # vega = Utils.spectrumVega( makePlot=False )
+    # Teff = zAll['TstarK']
+    # logg = zAll['loggstarCGS']
+    # n = len( Teff )
+    # zAll['Jmag'] = np.zeros( n )
+    # zAll['Hmag'] = np.zeros( n )
+    # zAll['Kmag'] = np.zeros( n )
+    # for i in range( n ):
+    #     pl = zAll['planetName'][i]
+    #     print( 'Converting TOI Tmags... {0} ({1:.0f} of {2:.0f})'.format( pl, i+1, n ) )
+    #     if np.isfinite( Teff[i] )*np.isfinite( logg[i] ):
+    #         star = Utils.modelStellarSpectrum( Teff[i], logg[i], FeH=0 )
+    #         zAll['Jmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
+    #                                               outputMag='J', vega=vega, star=star )
+    #         zAll['Hmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
+    #                                               outputMag='H', vega=vega, star=star )
+    #         zAll['Kmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
+    #                                               outputMag='Ks', vega=vega, star=star )
+    #     else:
+    #         zAll['Jmag'][i] = np.nan
+    #         zAll['Hmag'][i] = np.nan
+    #         zAll['Kmag'][i] = np.nan
+    
+    zAll['Jmag'] = Utils.JHKmags(zAll['TICID'])['Jmag']
+    zAll['Hmag'] = Utils.JHKmags(zAll['TICID'])['Hmag']
+    zAll['Kmag'] = Utils.JHKmags(zAll['TICID'])['Kmag']
+    
     zAll['TSM'] = Utils.computeTSM( zAll['RpValRE'], zAll['MpValME'], \
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
@@ -315,6 +322,8 @@ def readTOIsNExScI( fpath ):
     zMissing = {}
     for k in ['TSM','ESM']:
         zMissing[k] = zAll['planetName'][np.isfinite( zAll[k] )==False]
+
+
     return zAll, zMissing, dateStr
 
 def addMissingInsol( z ):
@@ -705,8 +714,11 @@ def readRawTOIsNExScI( fpath ):
 
     z = {}
     z['planetName'] = np.array( t[1:,cols=='toi'].flatten(), dtype='<U20' )
+    z['TICID'] = np.array( t[1:,cols=='tid'].flatten(), dtype='<U20')
     z['RA_deg'] = t[1:,cols=='ra'].flatten()
+    z['RA'] = np.array( t[1:,cols=='rastr'].flatten(), dtype='<U20' )
     z['Dec_deg'] = t[1:,cols=='dec'].flatten()
+    z['Dec'] = np.array( t[1:,cols=='decstr'].flatten(), dtype='<U20' )
     z['Insol'] = t[1:,cols=='pl_insol'].flatten()
     z['Pday'] = t[1:,cols=='pl_orbper'].flatten()
     z['TeqK'] = t[1:,cols=='pl_eqt'].flatten()
@@ -741,7 +753,7 @@ def readRawTOIsNExScI( fpath ):
         return zarrOut
 
     for k in list( z.keys() ):
-        if ( k=='planetName' ):
+        if ( k=='planetName' or k =='TICID' or k =='RA' or k == 'Dec' ):
             continue
         else:
             z[k] = convertMissing( z[k] )
@@ -753,3 +765,4 @@ def readRawTOIsNExScI( fpath ):
     z['RpRs'] = ( z['RpValRE']*Utils.REARTH_SI )/( z['RsRS']*Utils.RSUN_SI )
     return z
 
+# readTOIsNExScI('TOI_2021-06-23.csv')
