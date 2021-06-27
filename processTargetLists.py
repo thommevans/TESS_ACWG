@@ -72,12 +72,9 @@ def predictedTESS( version=1 ):
        - Uses Petigura 2018 for FGK occurrence rate.
        - Uses TIC 8 (based on Gaia)
     """
-    z = readRawBarclay2018( version=version )
+    z = readRawBarclayLines_v2()
     n = len( z['RpValRE'] )
-    z['MpValME'] = np.zeros( n )
-    for i in range( n ):
-        z['MpValME'][i] = Utils.planetMassFromRadius( z['RpValRE'][i], \
-                                                      whichRelation='Chen&Kipping2017' )
+ 
     z['MpValME'] = Utils.planetMassFromRadius( z['RpValRE'], \
                                                whichRelation='Chen&Kipping2017' )
     z = addTeq( z )
@@ -91,11 +88,11 @@ def predictedTESS( version=1 ):
     pickle.dump( z, ofile )
     ofile.close()
     print( '\nSaved:\n{0}\n'.format( opath ) )
-    return None
+    return opath
 
 #################################################################################
 
-def readRawBarclay2018( version=2 ):
+""" def readRawBarclay2018( version=2 ):
     if version==1:
         z = readRawBarclayLines_v1()
     elif version==2:
@@ -105,9 +102,9 @@ def readRawBarclay2018( version=2 ):
     return z
     
 def readRawBarclayLines_v1():
-    """
+    
     Published version Barclay, Pepper, Quintana (2018).
-    """    
+       
     ifile = open( IPATH_BARCLAY2018_V1, 'r' ) 
     z = {}
     z['RAdeg'] = []
@@ -170,7 +167,7 @@ def readRawBarclayLines_v1():
     for k in list( z.keys() ):
         z[k] = np.array( z[k] )[ixs]
     return z
-
+ """
 def readRawBarclayLines_v2():
     """
     All detections satisfy the conservative detection criteria.
@@ -225,9 +222,17 @@ def readRawBarclayLines_v2():
             z['b'] += [l[27-33]]
             z['T14hr'] += [l[28-33]]
             z['Insol'] += [l[-3]]
-            detected += [l[-13]] 
+            detected += [int(l[-13])] 
 
     ifile.close()
+
+    #Correct the data types
+    for key in z:
+        for i in range(len(z[key])):
+            if key not in ['cad2min', 'subGiants']:
+                z[key][i] = float(z[key][i])
+            else:
+                z[key][i] = int(z[key][i])
 
     #Cut out undetected
     ixs = []
@@ -749,5 +754,3 @@ def readRawTOIsNExScI( fpath ):
     z['RpLowErrRJ'] = z['RpLowErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpRs'] = ( z['RpValRE']*Utils.REARTH_SI )/( z['RsRS']*Utils.RSUN_SI )
     return z
-
-readRawBarclayLines_v2()
