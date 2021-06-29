@@ -307,9 +307,10 @@ def readTOIsNExScI( fpath ):
     #         zAll['Hmag'][i] = np.nan
     #         zAll['Kmag'][i] = np.nan
     
-    zAll['Jmag'] = Utils.JHKmags(zAll['TICID'])['Jmag']
-    zAll['Hmag'] = Utils.JHKmags(zAll['TICID'])['Hmag']
-    zAll['Kmag'] = Utils.JHKmags(zAll['TICID'])['Kmag']
+    zAll['Jmag'] = Utils.JHKVmags(zAll['TICID'])['Jmag']
+    zAll['Hmag'] = Utils.JHKVmags(zAll['TICID'])['Hmag']
+    zAll['Kmag'] = Utils.JHKVmags(zAll['TICID'])['Kmag']
+    zAll['Vmag'] = Utils.JHKVmags(zAll['TICID'])['Vmag']
     
     zAll['TSM'] = Utils.computeTSM( zAll['RpValRE'], zAll['MpValME'], \
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )

@@ -1,8 +1,7 @@
 import os, sys, pdb
 from TESS_ACWG import downloadTargetLists, processTargetLists
-from TESS_ACWG import surveyGrids
+from TESS_ACWG import surveyGrids, surveySetup
 from TESS_ACWG import massRadiusFigure
-import surveySetup
 
 ADIR = os.getcwd()
 
