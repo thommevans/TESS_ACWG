@@ -56,7 +56,7 @@ def TOIs( csvIpath='', pklOdir='' ):
 
     return opath
 
-def predictedTESS( version=1 ):
+def predictedTESS():
     """
     There are two versions of the Barclay predictions.
     1. Published.
@@ -81,7 +81,7 @@ def predictedTESS( version=1 ):
     z['TSM'] = Utils.computeTSM( z['RpValRE'], z['MpValME'], z['RsRS'], \
                                  z['TeqK'], z['Jmag'] )
     z['ESM'] = Utils.computeESM( z['TeqK'], z['RpRs'], z['TstarK'], z['Kmag'] )
-    oname = 'predictedProperties_v{0:.0f}.pkl'.format( version )
+    oname = 'predictedProperties_v2.pkl'
     odir = os.getcwd()
     opath = os.path.join( odir, oname )
     ofile = open( opath, 'wb' )
@@ -258,6 +258,8 @@ def getDateStr( fpath, whichList='Confirmed' ):
         prefix = 'PS_'
     elif whichList=='TOIs':
         prefix = 'TOI_'
+    elif whichList == 'Predicted':
+        prefix = 'Predicted'
     n = len( prefix )
     ix0 = n+fname.rfind( prefix )
     ix1 = ix0+10

@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-from . import Utils
+from . import Utils, processTargetLists
+from . import surveySetup
 
 FIGDIR = os.path.join( os.getcwd(), 'Figures' )
     
@@ -393,46 +394,54 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
                                addSignature=False, SMFlag='TSM' ):
     """
     Focusing on TESS predicted yield, not worrying about survey grid.
-    This routine is currently out of date.
     """
 
-    #Unchanged for ESM because no references
-
-    z = readConfirmedProperties()
+    z = readPredictedProperties(SMFlag = SMFlag)
     ostr = 'predictedTESS'
     
-    n0 = len( z['planetName'] )
-    ixs1 = np.isfinite( z['MpValME'] )*np.isfinite( z['MpLsigME'] )
-    ixs2 = ( z['MpValME'][ixs1]/z['MpLsigME'][ixs1]>=5 )
+    survey = { 'surveyName':'ACWG', 'obsSample':'PublishedMassesOnly', 'framework':'ACWG', \
+           'gridEdges':surveySetup.gridEdges, 'thresholdTSM':surveySetup.thresholdTSM, \
+           'thresholdESM':surveySetup.thresholdESM, 'preCuts':surveySetup.preCutsConfirmed }
+
+    n0 = len( z['RsRS'] )
+    # ixs1 = np.isfinite( z['MpValME'] )*np.isfinite( z['MpLsigME'] )
+    # ixs2 = ( z['MpValME'][ixs1]/z['MpLsigME'][ixs1]>=5 )
     # Exclude very big and small stars:
-    ixs3 = ( z['RsRS'][ixs1][ixs2]>=0.05 )*( z['RsRS'][ixs1][ixs2]<10 )
-    ixs = np.arange( n0 )[ixs1][ixs2][ixs3]
-    print( '{0:.0f} planets have >5-sigma mass measurements.'.format( len( ixs ) ) )
-    pl = z['planetName'][ixs]
-    TSM = z['TSM'][ixs]
+    # ixs3 = ( z['RsRS'][ixs1][ixs2]>=0.05 )*( z['RsRS'][ixs1][ixs2]<10 )
+    # ixs = np.arange( n0 )[ixs1][ixs2][ixs3]
+
+    #Exclude very big and small stars:
+    ixs = ( z['RsRS']>=0.05 )*( z['RsRS']<10 )
+    # print( '{0:.0f} planets have >5-sigma mass measurements.'.format( len( ixs ) ) )
+    # pl = z['planetName'][ixs]
+    SM = z['SM'][ixs]
     Teq = z['TeqK'][ixs]
     Ts = z['TstarK'][ixs]
     MpVal = z['MpValME'][ixs]
-    MpLsig = z['MpLsigME'][ixs]
-    MpUsig = z['MpUsigME'][ixs]
+    # MpLsig = z['MpLsigME'][ixs]
+    # MpUsig = z['MpUsigME'][ixs]
     RpVal = z['RpValRE'][ixs]
-    RpLsig = z['RpLsigRE'][ixs]
-    RpUsig = z['RpUsigRE'][ixs]
-    TESS = np.array( z['TESS'][ixs], dtype=int )
-    
+    # RpLsig = z['RpLsigRE'][ixs]
+    # RpUsig = z['RpUsigRE'][ixs]
+    # TESS = np.array( z['TESS'][ixs], dtype=int )
+    TESS = [0 for i in range(len(ixs))]
+    pl = ['PredictedPlanet-{0}'.format(str(i)) for i in range(len(ixs))]
     # Since we're illustrating the *predicted* contribution by TESS,
     # remove the planets that have been detected by TESS already:
-    ixs = ( TESS==0 )
+    # ixs = ( TESS==0 )
 
-    
+    dateStr = processTargetLists.getDateStr( 'predictedProperties_v2.pkl', whichList='Predicted' )
     # Radius-temperature plot for all planets with well-measured mass:
-    titleStr = 'Top-ranked transmission spectroscopy targets '
-    if wideFormat==True:
-        titleStr += 'with published ($>5\\sigma$) masses'
-    else:
-        titleStr += '\nwith published ($>5\\sigma$) masses'
-        
-    fig0a, ax0a = plotTeqRpScatter( pl, Teq[ixs], RpVal[ixs], Ts[ixs], TSM[ixs], \
+    # titleStr = 'Top-ranked transmission spectroscopy targets '
+    # if wideFormat==True:
+    #     titleStr += 'with published ($>5\\sigma$) masses'
+    # else:
+    #     titleStr += '\nwith published ($>5\\sigma$) masses'
+    
+     
+    titleStr = 'Top ranked predicted planets'
+    
+    fig0a, ax0a = plotTeqRpScatter( pl, Teq[ixs], RpVal[ixs], Ts[ixs], ('SMFlag', SM[ixs]), \
                                     TESS[ixs], applyTSMcuts=False, ms=6, alpha=1, \
                                     starColors=True, showSolarSystem=showSolarSystem, \
                                     showStellarTrack=showStellarTrack, \
@@ -440,7 +449,7 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
                                     surveyModule=surveyModule, showGrid=showGrid, \
                                     indicateTESS=False, dateStr=dateStr, \
                                     showNeptuneRadius=showNeptuneRadius, \
-                                    showJupiterRadius=showJupiterRadius )
+                                    showJupiterRadius=showJupiterRadius, survey=survey )
     if crossHair is not None:
         ix = ( pl==crossHair )
         ax0a.axvline( Teq[ix], c='HotPink' )
@@ -470,11 +479,11 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
     fig0a.savefig( opaths['0a'] )
     
     # Radius-temperature plot for all planets with well-measured mass:
-    if wideFormat==True:
-        titleStr = 'Planets with published masses plus predicted TESS planets '
-    else:
-        titleStr = 'Planets with published masses\nplus predicted TESS planets '
-    fig0b, ax0b = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], TSM[ixs], \
+    # if wideFormat==True:
+    #     titleStr = 'Planets with published masses plus predicted TESS planets '
+    # else:
+    #     titleStr = 'Planets with published masses\nplus predicted TESS planets '
+    fig0b, ax0b = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], ('SMFlag', SM[ixs]), \
                                     TESS[ixs], applyTSMcuts=False, ms=6, alpha=1, \
                                     starColors=True, showSolarSystem=showSolarSystem, \
                                     showStellarTrack=showStellarTrack, \
@@ -482,10 +491,12 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
                                     surveyModule=surveyModule, showGrid=showGrid, \
                                     indicateTESS=False, dateStr=dateStr, \
                                     showNeptuneRadius=showNeptuneRadius, \
-                                    showJupiterRadius=showJupiterRadius )
-    plotTeqRpTESS( ax0b, thresholdTSM=thresholdTSM )
+                                    showJupiterRadius=showJupiterRadius, survey=survey )
+   
+    plotTeqRpTESS( ax0b, SMFlag = SMFlag )
+    
     fig0b.savefig( opaths['0b'] )
-
+    """
     # Same as previous but with low alpha value for known planets:
     titleStr = 'Planets with published masses (faint)' 
     if wideFormat==True:
@@ -559,6 +570,73 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
         print( onames[k] )
     #print( '\nSaved:\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n'\
     #       .format( opath0a, opath0b, opath1a, opath1b, opath2a, opath2b, opath3 ) )
+    """
+ # Same as previous but with low alpha value for known planets:
+    titleStr = 'Predicted TESS planets' 
+    
+    fig1, ax1 = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], ('SMFlag', SM[ixs]), \
+                                  TESS[ixs], applyTSMcuts=False, ms=6, alpha=0.3, \
+                                  starColors=True, showSolarSystem=showSolarSystem, \
+                                  showStellarTrack=showStellarTrack, \
+                                  wideFormat=wideFormat, titleStr=titleStr, \
+                                  surveyModule=surveyModule, showGrid=showGrid, \
+                                  indicateTESS=False, dateStr=dateStr, \
+                                  showNeptuneRadius=showNeptuneRadius, \
+                                  showJupiterRadius=showJupiterRadius, survey=survey )
+    #opath1a = os.path.join( FIGDIR, onames['1a'] )
+    fig1.savefig( opaths['1a'] )
+
+    # Add the bright predicted TESS planets:
+    titleStr = 'Predicted TESS planets'
+    #titleStr = 'Top-ranked transmission spectroscopy targets '
+    #titleStr += 'with published ($>5\\sigma$) masses + TESS predicted'
+    plotTeqRpTESS( ax1, showSolarSystem=False, showNeptuneRadius=False, \
+                   showJupiterRadius=False, SMFlag = SMFlag, z=z )
+    #opath1b = os.path.join( FIGDIR, onames['1b'] )
+    fig1.savefig( opaths['1b'] )
+    
+    # Radius-temperature plot for all planets with well-measured mass:
+    fig2, ax2 = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], ('SMFlag', SM[ixs]), \
+                                  TESS[ixs], applyTSMcuts=False, ms=3, alpha=1, \
+                                  starColors=False, showSolarSystem=showSolarSystem, \
+                                  showStellarTrack=showStellarTrack, \
+                                  wideFormat=wideFormat, titleStr=titleStr, \
+                                  surveyModule=surveyModule, showGrid=showGrid, \
+                                  indicateTESS=False, dateStr=dateStr, \
+                                  showNeptuneRadius=showNeptuneRadius, \
+                                  showJupiterRadius=showJupiterRadius, survey=survey )
+    if wideFormat==True:
+        odirExt = 'survey{0}/wideFormat'.format( surveyModule )
+    else:
+        odirExt = 'survey{0}/narrowFormat'.format( surveyModule )
+    odir = os.path.join( FIGDIR, odirExt )
+    if os.path.isdir( odir )==False:
+        os.makedirs( odir )
+    #opath2a = os.path.join( FIGDIR, onames['2a'] )
+    fig2.savefig( opaths['2a'] )
+
+    # Add the bright predicted TESS planets:
+    plotTeqRpTESS( ax2, showSolarSystem=False, showNeptuneRadius=False, \
+                   showJupiterRadius=False, SMFlag = SMFlag, z=z )
+    #opath2b = os.path.join( FIGDIR, onames['2b'] )
+    fig2.savefig( opaths['2b'] )
+
+    # Make a plot with the TESS planets only:
+    # titleStr = 'TESS predicted planets (Barclay et al., 2018)'
+    # fig3, ax3, ax3Legend = generateBasicAxis( wideFormat=wideFormat, titleStr=titleStr )
+    # plotTeqRpTESS( ax3, titleStr=titleStr, showSolarSystem=showSolarSystem, \
+    #                showNeptuneRadius=showNeptuneRadius, \
+    #                showJupiterRadius=showJupiterRadius, SMFlag = SMFlag, z=z )
+    # if showStellarTrack==True:
+    #     ax3 = addStellarTrack( ax3 )
+    # #opath3 = os.path.join( FIGDIR, onames['3'] )
+    # fig3.savefig( opaths['3'] )
+
+    print( '\nSaved:' )
+    for k in ['0a','0b','1a','1b','2a','2b','3']:
+        print( onames[k] )
+    #print( '\nSaved:\n{0}\n{1}\n{2}\n{3}\n{4}\n{5}\n{6}\n'\
+    #       .format( opath0a, opath0b, opath1a, opath1b, opath2a, opath2b, opath3 ) )
     return None
 
 
@@ -621,38 +699,37 @@ def printTopPredictedSubNeptunes( z, onlySubNeptunes=True ):
     return None
 
 
-def plotTeqRpTESS( ax, showSolarSystem=True, showNeptuneRadius=True, dateStr='', \
-                   showJupiterRadius=True, titleStr='' ):
+def plotTeqRpTESS( ax, showSolarSystem=True, showNeptuneRadius=True, \
+                   showJupiterRadius=True, SMFlag = 'TSM', z={}):
 
-    #Unchanged for ESM because only referenced in transmissionPredictedTESS
-
-    t = readPredictedProperties()
     m = 10
-    ixs = ( t['cad2min']==1 )*( ( t['Vmag']<m )+( t['Jmag']<m )+( t['Kmag']<m ) )
-    TSM = t['TSM'][ixs]
-    Teq = t['TeqK'][ixs]
-    RpVal = t['RpValRE'][ixs]
-    printTopPredictedSubNeptunes( t )
-    Ts = t['TstarK'][ixs]
+    ixs = ( z['cad2min']==1 )*( ( z['Vmag']<m )+( z['Jmag']<m )+( z['Kmag']<m ) )
+    SM = z['SM'][ixs]
+    Teq = z['TeqK'][ixs]
+    RpVal = z['RpValRE'][ixs]
+    printTopPredictedSubNeptunes( z )
+    Ts = z['TstarK'][ixs]
     n = len( Teq )
     alpha = 1
     ms = 6
     z0 = 1000
-    applyTSMcuts = False
+    applySMcuts = False
     for i in range( n ):
         c = Utils.getStarColor( Ts[i] )
-        if thresholdTSM=='ACWG':
-            thresholdTSM = surveyModule.getThresholdTSM( RpVal[i], framework=thresholdTSM )
-            pdb.set_trace() # TEMPORARY
-        if applyTSMcuts==False: # plotting everything regardless of TSM
+        if SMFlag == 'TSM':
+            thresholdSM = surveySetup.thresholdTSM( RpVal[i], framework='ACWG' )
+        elif SMFlag == 'ESM':
+            thresholdSM = surveySetup.thresholdESM(RpVal[i], framework='ACWG')
+        if applySMcuts==False: # plotting everything regardless of TSM
             ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=ms, alpha=alpha, \
                      mfc=c, mec=c, zorder=z0+i )
-        elif TSM[i]>thresholdTSM: # if TSM cuts applied, this one is high enough
+        elif SM[i]>thresholdSM: # if TSM cuts applied, this one is high enough
             ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=ms, alpha=alpha, \
                      mfc=c, mec=c, zorder=z0+i )
         else: # otherwise plot as a smaller background point
+            # Changed c0 to c
             ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=0.5*ms, alpha=alpha, \
-                     mfc=c0, mec=c0, zorder=0 )
+                     mfc=c, mec=c, zorder=0 )
     ax = addSolarSystem( ax, showSolarSystem=showSolarSystem, \
                          showNeptuneRadius=showNeptuneRadius, \
                          showJupiterRadius=showJupiterRadius )
@@ -762,24 +839,28 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
     #SM- (str: type, list: values)
         
     framework = survey['framework']
-    nx = len( xLines )-1
-    ny = len( yLines )-1
-    n = len( pl )
-    ixs0 = np.arange( n )
+    nx = len( xLines )-1 # Number of lines on x axis
+    ny = len( yLines )-1 # Number of lines on y axis
+    n = len( pl ) # Number of planets
+    ixs0 = np.arange( n ) 
     text_fs = 12
-    nList = 5
+    nList = 5 
     ms = 8
     for i in range( nx ): # loop over temperature columns
-        ixsi = ( TeqK>=Tgrid[i] )*( TeqK<Tgrid[i+1] )
+        ixsi = ( TeqK>=Tgrid[i] )*( TeqK<Tgrid[i+1] ) # Show if within the temperature range
         #xtxt = xLines[i] + 0.05*( xLines[i+1]-xLines[i] )
         #xsymb = xLines[i] + 0.90*( xLines[i+1]-xLines[i] )
-        xsymb = xLines[i] + 0.06*( xLines[i+1]-xLines[i] )
+        xsymb = xLines[i] + 0.06*( xLines[i+1]-xLines[i] ) 
         xtxt = xLines[i] + 0.12*( xLines[i+1]-xLines[i] )
         #print( '\n\nNew cell:' )
         for j in range( ny ): # loop over radius rows
             # Indices inside box above the TSM threshold:
             RpREj = 0.5*( Rgrid[j]+Rgrid[j+1] )
 
+            predSM = getFifthPredicted(SM[0], Rgrid[j+1], Rgrid[j], Tgrid[i+1], Tgrid[i])
+            print('Radius: (', Rgrid[j], ', ', Rgrid[j+1], ') Temperature: (', Tgrid[i], ', ', Tgrid[i+1],') SM: ', predSM)
+
+            #Find the threshold SM for the cell
             if SM[0] == 'TSM':
                 SMj, SMstr = survey['thresholdTSM']( RpREj, framework=framework )
             elif SM[0] == 'ESM':
@@ -789,25 +870,31 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
             #    TSMj = Utils.getThresholdTSM( RpREj, framework=thresholdTSM )
             #else:
             #    TSMj = thresholdTSM
-            ixsj = ( RpRE>=Rgrid[j] )*( RpRE<Rgrid[j+1] )
+            ixsj = ( RpRE>=Rgrid[j] )*( RpRE<Rgrid[j+1] ) # Show if within the radius range
             #ixsij = ixs0[ixsi*ixsj*( TSM>0)]
-            ixsij = ixs0[ixsi*ixsj*( SM[1]>SMj )]
-            nij = len( ixsij )
+            ixsij = ixs0[ixsi*ixsj*( SM[1]>SMj )] # Show if in the cell and SM higher than threshold
+            nij = len( ixsij ) # Number in cell higher than threshold
             if nij>0:
                 # Order by decreasing SM:
-                ixso = np.argsort( SM[1][ixsij] )
-                ixs = ixsij[ixso][::-1]
-                nwrite = min( [ nij, nList ] )
+                ixso = np.argsort( SM[1][ixsij] ) 
+                ixs = ixsij[ixso][::-1] 
+                
+                nwrite = min( [ nij, nList ] ) # Number is number above threshold in cell or 5
                 dy = ( yLines[j+1]-yLines[j] )/float(nList+0.5)
                 y0 = yLines[j]+4.8*dy
-                for k in range( nwrite ):
+                for k in range( nwrite ): #For each planet (max 5)
                     ytxt = y0-k*dy
                     plStr = pl[ixs][k].replace( ' ', '' )
-                    plStr = '{0} [{1:.0f}]'.format( plStr, SM[1][ixs][k] )
-                    if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ):
+                    plStr = '{0} [{1:.0f}]'.format( plStr, SM[1][ixs][k] ) #Planet Name [SM]
+                    
+                    predSM = getFifthPredicted(SM[0], Rgrid[j+1], Rgrid[j], Tgrid[i+1], Tgrid[i])
+                    if SM[1][ixs][k] >= predSM:
+                        plStr += '*'
+
+                    if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ): # Silver if APC or CP
                         c = 'Silver'
                         wt = 'normal'
-                    else:
+                    else: # Black if PC
                         c = 'Black'
                         wt = 'normal'
                     ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
@@ -1389,11 +1476,9 @@ def readWithMassTESSProperties():
     return outp
 
 
-def readPredictedProperties( version=2 ):
+def readPredictedProperties(SMFlag = 'TSM'):
 
-    #Unchanged for ESM because only referenced in plotTeqRpTESS
-
-    iname = 'predictedProperties_v{0:.0f}.pkl'.format( version )
+    iname = 'predictedProperties_v2.pkl'
     ifile = open( iname, 'rb' )
     z = pickle.load( ifile )
     ifile.close()
@@ -1401,7 +1486,10 @@ def readPredictedProperties( version=2 ):
     TeqK = z['TeqK']
     Insol = z['Insol']
     TstarK = z['TstarK']
-    TSM = z['TSM']
+    if SMFlag == 'TSM':
+        SM = z['TSM']
+    elif SMFlag == 'ESM':
+        SM = z['ESM']
     aRs = z['aRs']
     b = z['b']
     ideg = np.rad2deg( np.arccos( b/aRs ) )
@@ -1414,17 +1502,42 @@ def readPredictedProperties( version=2 ):
     Vmag = z['Vmag']
     Jmag = z['Jmag']
     Kmag = z['Kmag']
-    ixs = np.isfinite( TeqK )*np.isfinite( TSM )*np.isfinite( RpValRE )
-    print( '\nReading in {0:.0f} planets total.'.format( len( TSM ) ) )
-    print( 'Returning {0:.0f} planets with radii, TSM, and Teq values.'\
-           .format( ixs.sum() ) )
-    outp = { 'TSM':TSM[ixs], 'cad2min':cad2min, 'TeqK':TeqK[ixs], \
-             'aRs':aRs[ixs], 'Pday':Pday[ixs], 'Insol':Insol[ixs], \
+
+    ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
+    print( '\nReading in {0:.0f} planets total.'.format( len( SM ) ) )
+    print( 'Returning {0:.0f} planets with radii, {1}, and Teq values.'\
+           .format( ixs.sum(), SMFlag ) )
+    outp = { 'SM': SM[ixs], 'cad2min': cad2min, 'TeqK':TeqK[ixs], \
+             'aRs':aRs [ixs], 'Pday':Pday[ixs], 'Insol':Insol[ixs], \
              'MsValMS':MsMS[ixs], 'RsRS':RsRS[ixs], 'TstarK':TstarK[ixs], \
              'RpValRE':RpValRE[ixs], 'MpValME':MpValME[ixs], \
              'ideg':ideg[ixs], 'b':b[ixs], 'T14hr':T14hr[ixs], \
              'Vmag':Vmag[ixs], 'Jmag':Jmag[ixs], 'Kmag':Kmag[ixs] }
     return outp
+
+def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0):
+    
+    """
+    Finds the fifth-highest ESM or TSM value for the predicted planets in a given RpRE and Teq range
+    """
+
+    z = readPredictedProperties(SMFlag = SMFlag)
+
+    numPlanets = len(z['RsRS'])
+    ixs = [i for i in range(numPlanets) if RpMin < z['RpValRE'][i] < RpMax]
+    ixs1 = [i for i in ixs if TeqMin < z['TeqK'][i] < TeqMax]
+        
+    highestSMs = [0, 0, 0, 0, 0]
+    
+    for n in ixs1:
+        if z['SM'][n] > highestSMs[0]:
+            highestSMs.pop(0)
+            highestSMs.append(z['SM'][n])
+            highestSMs.sort()
+
+    return  highestSMs[0]
+            
+
 
 
 
