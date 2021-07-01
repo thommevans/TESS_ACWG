@@ -803,7 +803,8 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
     #fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
     #          fontsize=14, horizontalalignment='left', verticalalignment='top' )
     otherNotes = 'No bright limits have been applied\n'
-    otherNotes += 'Numbers in square brackets are {0} values'.format( SM[0] )    
+    otherNotes += 'Numbers in square brackets are {0} values'.format( SM[0] )   
+    otherNotes += 'Asterisks by TOIs with {0} higher than fifth-highest predicted (Barclay et al. 2018)'.format(SM[0])
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
     #fig.text( 0.08, subtitleY-2.7*dySubTitle, otherNotes, c='black', \
@@ -1478,6 +1479,13 @@ def readWithMassTESSProperties():
 
 def readPredictedProperties(SMFlag = 'TSM'):
 
+    """
+    Processes the predicted planet information from Barclay (uses version 2)
+
+    Parameters:
+    SMFlag: TSM or ESM (float)
+    """
+
     iname = 'predictedProperties_v2.pkl'
     ifile = open( iname, 'rb' )
     z = pickle.load( ifile )
@@ -1519,6 +1527,10 @@ def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0
     
     """
     Finds the fifth-highest ESM or TSM value for the predicted planets in a given RpRE and Teq range
+
+    Parameters:
+    SMFlag- TSM or ESM (str)
+    RpMax, RpMin, TeqMax, TeqMin- Define the grid cell in question (float)
     """
 
     z = readPredictedProperties(SMFlag = SMFlag)
