@@ -82,8 +82,8 @@ def predictedTESS():
     z['TSM'] = Utils.computeTSM( z['RpValRE'], z['MpValME'], z['RsRS'], \
                                  z['TeqK'], z['Jmag'] )
     z['ESM'] = Utils.computeESM( z['TeqK'], z['RpRs'], z['TstarK'], z['Kmag'] )
+    odir = os.path.dirname( __file__ )
     oname = 'predictedProperties_v2.pkl'
-    odir = os.getcwd()
     opath = os.path.join( odir, oname )
     ofile = open( opath, 'wb' )
     pickle.dump( z, ofile )
@@ -174,7 +174,9 @@ def readRawBarclayLines_v2():
     All detections satisfy the conservative detection criteria.
     """
     # updated version incl. extended mission (2020)
-    ifile = open('datafileBarclayTESS_v2.txt', 'r')
+    idir = os.path.dirname( __file__ )
+    ipath = os.path.join( idir, 'datafileBarclayTESS_v2.txt' )
+    ifile = open( ipath, 'r')
 
     z = {}
     z['RAdeg'] = []
