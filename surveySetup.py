@@ -75,12 +75,9 @@ def thresholdTSM( RpRE, framework='ACWG' ):
 
 
 def thresholdESM( RpRE, framework='ACWG' ):
-    # Kempton only gives a cut-off for terrestrials, unclear difference between ACWG and TOI
     ESMstr = '* Kempton et al. (2018) ESM cuts applied'
-    if RpRE < 1.50: # 1. Terrestrials
-        ESM = 7.5
-    elif 1:
-        ESM = 7.5
+    ESM = 7.5
+
     return ESM, ESMstr
 
 
