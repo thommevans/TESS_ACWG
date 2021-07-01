@@ -77,6 +77,7 @@ def thresholdTSM( RpRE, framework='ACWG' ):
 def thresholdESM( RpRE, framework='ACWG' ):
     ESMstr = '* Kempton et al. (2018) ESM cuts applied'
     ESM = 7.5
+
     return ESM, ESMstr
 
 

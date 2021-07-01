@@ -48,7 +48,7 @@ def modelStellarSpectrum( TeffK, loggCGS, FeH=0 ):
     return star
 
 
-def JHKmags( TICIDs ):
+def JHKVmags( TICIDs ):
     
 
     listtici = list( TICIDs )
@@ -97,10 +97,10 @@ def JHKmags( TICIDs ):
     
     for planet in dictquertemp:
         magsDictByID[planet['ID']] = {'Jmag':planet['Jmag'],'Hmag':planet['Hmag'],\
-                                      'Kmag':planet['Kmag']}
+                                      'Kmag':planet['Kmag'], 'Vmag':planet['Vmag']}
     
     magsDict = {}
-    mags = ['Jmag', 'Hmag', 'Kmag']
+    mags = ['Jmag', 'Hmag', 'Kmag', 'Vmag']
     
     for mag in mags:
         maglist = []

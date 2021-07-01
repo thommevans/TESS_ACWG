@@ -11,7 +11,7 @@ def targetsWithPublishedConfirmation():
 
     """
     date = str(datetime.date(datetime.now()))
-    path = 'PS_'+date+'.csv'
+    path = 'PS_'+date[:-3]+'.csv'
     confirmedFpath = path
     
     default_query = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+ps+where+tran_flag+=+1&format=csv"
@@ -54,7 +54,7 @@ def targetsUnpublishedTOIs():
     
     """
     date = str(datetime.date(datetime.now()))
-    path = 'TOI_'+date+'.csv'
+    path = 'TOI_'+date[:-3]+'.csv'
     toiFpath = path
     
     default_query = "https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?table=TOI&format=csv"

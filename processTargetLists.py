@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import pickle
 from . import Utils
 
+
 """
 Module for pre-processing ASCII/csv files into pickle files that are 
 then used as input by other modules such as survey.py.
@@ -286,28 +287,35 @@ def readTOIsNExScI( fpath ):
     zAll = zRaw
     zAll['MpValME'] = Utils.planetMassFromRadius( zAll['RpValRE'], \
                                                   whichRelation='Chen&Kipping2017' )
-    vega = Utils.spectrumVega( makePlot=False )
-    Teff = zAll['TstarK']
-    logg = zAll['loggstarCGS']
-    n = len( Teff )
-    zAll['Jmag'] = np.zeros( n )
-    zAll['Hmag'] = np.zeros( n )
-    zAll['Kmag'] = np.zeros( n )
-    for i in range( n ):
-        pl = zAll['planetName'][i]
-        print( 'Converting TOI Tmags... {0} ({1:.0f} of {2:.0f})'.format( pl, i+1, n ) )
-        if np.isfinite( Teff[i] )*np.isfinite( logg[i] ):
-            star = Utils.modelStellarSpectrum( Teff[i], logg[i], FeH=0 )
-            zAll['Jmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                  outputMag='J', vega=vega, star=star )
-            zAll['Hmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                  outputMag='H', vega=vega, star=star )
-            zAll['Kmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-                                                  outputMag='Ks', vega=vega, star=star )
-        else:
-            zAll['Jmag'][i] = np.nan
-            zAll['Hmag'][i] = np.nan
-            zAll['Kmag'][i] = np.nan
+    
+    # vega = Utils.spectrumVega( makePlot=False )
+    # Teff = zAll['TstarK']
+    # logg = zAll['loggstarCGS']
+    # n = len( Teff )
+    # zAll['Jmag'] = np.zeros( n )
+    # zAll['Hmag'] = np.zeros( n )
+    # zAll['Kmag'] = np.zeros( n )
+    # for i in range( n ):
+    #     pl = zAll['planetName'][i]
+    #     print( 'Converting TOI Tmags... {0} ({1:.0f} of {2:.0f})'.format( pl, i+1, n ) )
+    #     if np.isfinite( Teff[i] )*np.isfinite( logg[i] ):
+    #         star = Utils.modelStellarSpectrum( Teff[i], logg[i], FeH=0 )
+    #         zAll['Jmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
+    #                                               outputMag='J', vega=vega, star=star )
+    #         zAll['Hmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
+    #                                               outputMag='H', vega=vega, star=star )
+    #         zAll['Kmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
+    #                                               outputMag='Ks', vega=vega, star=star )
+    #     else:
+    #         zAll['Jmag'][i] = np.nan
+    #         zAll['Hmag'][i] = np.nan
+    #         zAll['Kmag'][i] = np.nan
+    
+    zAll['Jmag'] = Utils.JHKVmags(zAll['TICID'])['Jmag']
+    zAll['Hmag'] = Utils.JHKVmags(zAll['TICID'])['Hmag']
+    zAll['Kmag'] = Utils.JHKVmags(zAll['TICID'])['Kmag']
+    zAll['Vmag'] = Utils.JHKVmags(zAll['TICID'])['Vmag']
+
     zAll['TSM'] = Utils.computeTSM( zAll['RpValRE'], zAll['MpValME'], \
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
