@@ -1486,8 +1486,11 @@ def readPredictedProperties(SMFlag = 'TSM'):
     SMFlag: TSM or ESM (float)
     """
 
-    iname = 'predictedProperties_v2.pkl'
-    ifile = open( iname, 'rb' )
+    idir = os.path.dirname( __file__ )
+    ipath = os.path.join( idir, 'predictedProperties_v2.pkl' )
+    if os.path.isfile( ipath )==False:
+        processTargetLists.predictedTESS()
+    ifile = open( ipath, 'rb' )
     z = pickle.load( ifile )
     ifile.close()
     RsRS = z['RsRS']
