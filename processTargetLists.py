@@ -717,8 +717,11 @@ def readRawTOIsNExScI( fpath ):
 
     z = {}
     z['planetName'] = np.array( t[1:,cols=='toi'].flatten(), dtype='<U20' )
+    z['TICID'] = np.array( t[1:,cols=='tid'].flatten(), dtype='<U20' )
     z['RA_deg'] = t[1:,cols=='ra'].flatten()
+    z['RA'] = np.array( t[1:,cols=='rastr'].flatten(), dtype='<U20' )
     z['Dec_deg'] = t[1:,cols=='dec'].flatten()
+    z['Dec'] = np.array( t[1:,cols=='decstr'].flatten(), dtype='<U20' )
     z['Insol'] = t[1:,cols=='pl_insol'].flatten()
     z['Pday'] = t[1:,cols=='pl_orbper'].flatten()
     z['TeqK'] = t[1:,cols=='pl_eqt'].flatten()
@@ -753,7 +756,7 @@ def readRawTOIsNExScI( fpath ):
         return zarrOut
 
     for k in list( z.keys() ):
-        if ( k=='planetName' ):
+        if ( k=='planetName' or k =='TICID' or k =='RA' or k == 'Dec' ):
             continue
         else:
             z[k] = convertMissing( z[k] )
