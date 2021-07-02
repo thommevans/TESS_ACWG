@@ -1442,7 +1442,7 @@ def readWithMassTESSProperties():
     Returns properties of confirmed TESS planets lacking published masses.
     """
 
-    #Unchanged for ESM because no references
+    #Unchanged for ESM because no references 
 
     ifile = open( 'confirmedProperties.pkl', 'rb' )
     z0 = pickle.load( ifile )
