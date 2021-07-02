@@ -21,16 +21,10 @@ NASA Exoplanet Archive, see the docstrings for the following routines:
 
 """
 
-#IPATH_CONFIRMED = 'PS_2021.03.05_05.38.54.csv'
-#IPATH_CONFIRMED = 'PS_2021.03.23_04.28.28.csv'
-#IPATH_TOIS = 'TOI_2021.03.05_08.04.05.csv'
-#IPATH_BARCLAY2018_V1 = 'datafileBarclayTESS_v1.txt'
 IPATH_BARCLAY2018_V2 = 'datafileBarclayTESS_v2.txt'
 IPATH_BARCLAY2018_V1 = 'detected_planets.csv'
-#IPATH_BARCLAY2018_V2 = 'detected_planets-CTL8.csv'
 
 TEFFK_SUN = 5800
-
 
 def Confirmed( csvIpath='', pklOdir='' ):
     zAll, zMissing, dateStr = readConfirmedNExScI( csvIpath )
@@ -48,7 +42,6 @@ def TOIs( csvIpath='', pklOdir='' ):
     zAll, zMissing, dateStr = readTOIsNExScI( csvIpath )
     zOut = { 'missingProperties':zMissing, 'allVals':zAll, 'dateStr':dateStr }
     oname = 'toiProperties.pkl'
-    #odir = os.getcwd()
     opath = os.path.join( pklOdir, oname )
     ofile = open( opath, 'wb' )
     pickle.dump( zOut, ofile )
@@ -93,84 +86,9 @@ def predictedTESS():
 
 #################################################################################
 
-""" def readRawBarclay2018( version=2 ):
-    if version==1:
-        z = readRawBarclayLines_v1()
-    elif version==2:
-        z = readRawBarclayLines_v2()
-    else:
-        pdb.set_trace()
-    return z
-    
-def readRawBarclayLines_v1():
-    
-    Published version Barclay, Pepper, Quintana (2018).
-       
-    ifile = open( IPATH_BARCLAY2018_V1, 'r' ) 
-    z = {}
-    z['RAdeg'] = []
-    z['Decdeg'] = []
-    z['cad2min'] = []
-    z['Vmag'] = []
-    z['Kmag'] = []
-    z['Jmag'] = []
-    z['RsRS'] = []
-    z['MsMS'] = []
-    z['TstarK'] = []
-    z['subGiants'] = []
-    z['Pday'] = []
-    z['RpValRE'] = []
-    z['aRs'] = []
-    z['RpRs'] = []
-    z['b'] = []
-    z['T14hr'] = []
-    z['Insol'] = []
-    detected = []
-    ncol = []
-    for line in ifile:
-        l = line.split( ',' )
-        if len( l )>0:
-            c1 = ( l[0]=='#' )+( l[0][0]=='#' )+( l[0][0]=='-' )
-            if c1+( l[0]=='TICID' )+( l[0]=='deg' ):
-                continue
-            else:
-                ncol += [ len(l) ]
-                if ncol[-1]==32: # distance (pc) not provided
-                    i = 1
-                elif ncol[-1]==33: # distance (pc) is provided
-                    i = 0
-                else:
-                    pdb.set_trace() # shouldn't happen
-                z['RAdeg'] += [ float( l[1] ) ]
-                z['Decdeg'] += [ float( l[2] ) ]
-                z['cad2min'] += [ float( l[6] ) ]
-                z['Vmag'] += [ float( l[10] ) ]
-                z['Kmag'] += [ float( l[11] ) ]
-                z['Jmag'] += [ float( l[12] ) ]
-                z['RsRS'] += [ float( l[14] ) ]
-                z['MsMS'] += [ float( l[15] ) ]
-                z['TstarK'] += [ float( l[16] ) ]
-                z['subGiants'] += [ float( l[18] ) ]
-                detected += [ float( l[19] ) ]
-                z['Pday'] += [ float( l[21-i] ) ]
-                z['RpValRE'] += [ float( l[22-i] ) ]
-                z['aRs'] += [ float( l[24-i] ) ]
-                z['RpRs'] += [ float( l[26-i] ) ]
-                z['b'] += [ float( l[27-i] ) ]
-                z['T14hr'] += [ float( l[28-i] ) ]
-                z['Insol'] += [ float( l[30-i] ) ]
-                if z['RpValRE'][-1]==0:
-                    pdb.set_trace()
-    ifile.close()
-    detected = np.array( detected )
-    # All values of detected seem to be 1:
-    ixs = ( detected==1 )
-    for k in list( z.keys() ):
-        z[k] = np.array( z[k] )[ixs]
-    return z
- """
 def readRawBarclayLines_v2():
     """
+    Reads the Barclay predicted planet data and returns as a dictionary.
     All detections satisfy the conservative detection criteria.
     """
     # updated version incl. extended mission (2020)
@@ -290,29 +208,6 @@ def readTOIsNExScI( fpath ):
     zAll['MpValME'] = Utils.planetMassFromRadius( zAll['RpValRE'], \
                                                   whichRelation='Chen&Kipping2017' )
     
-    # vega = Utils.spectrumVega( makePlot=False )
-    # Teff = zAll['TstarK']
-    # logg = zAll['loggstarCGS']
-    # n = len( Teff )
-    # zAll['Jmag'] = np.zeros( n )
-    # zAll['Hmag'] = np.zeros( n )
-    # zAll['Kmag'] = np.zeros( n )
-    # for i in range( n ):
-    #     pl = zAll['planetName'][i]
-    #     print( 'Converting TOI Tmags... {0} ({1:.0f} of {2:.0f})'.format( pl, i+1, n ) )
-    #     if np.isfinite( Teff[i] )*np.isfinite( logg[i] ):
-    #         star = Utils.modelStellarSpectrum( Teff[i], logg[i], FeH=0 )
-    #         zAll['Jmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-    #                                               outputMag='J', vega=vega, star=star )
-    #         zAll['Hmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-    #                                               outputMag='H', vega=vega, star=star )
-    #         zAll['Kmag'][i] = Utils.convertTmag( zAll['Tmag'][i], Teff[i], logg[i],
-    #                                               outputMag='Ks', vega=vega, star=star )
-    #     else:
-    #         zAll['Jmag'][i] = np.nan
-    #         zAll['Hmag'][i] = np.nan
-    #         zAll['Kmag'][i] = np.nan
-    
     zAll['Jmag'] = Utils.JHKVmags(zAll['TICID'])['Jmag']
     zAll['Hmag'] = Utils.JHKVmags(zAll['TICID'])['Hmag']
     zAll['Kmag'] = Utils.JHKVmags(zAll['TICID'])['Kmag']
@@ -343,10 +238,6 @@ def addMissingInsol( z ):
     ixs = ( np.isfinite( z['Insol'] )==False )
     z['Insol'][ixs] = Insol[ixs]
 
-    #ix = z['planetName']=='GJ 1132 b'
-    #print( ix.sum() )
-    #print( z['Insol'][ix] )
-    #pdb.set_trace()
     return z
     
 def addUnits( z ):
@@ -446,9 +337,7 @@ def correctRpRs( z ):
     return z
     
 def correctT14hr( z ):
-    #ixs0 = ( np.isfinite( z['T14hr'] )==True )
-    #print( z['T14hr'][ixs0].min() )
-    #pdb.set_trace()
+
     ixs1 = ( np.isfinite( z['T14hr'] )==False )
     ixs2 = ( z['b']-z['RpRs']<1 ) # transiting
     ixs = ixs1*ixs2
@@ -482,8 +371,7 @@ def extractProperties( zRaw, planetName ):
     props1 = [ 'Pday', 'aAU', 'ecc', 'inclDeg', 'b', 'distParsec', \
                'Insol', 'T14hr', 'aRs', 'RpRs', 'TstarK', 'RsRS', 'MsMS', \
                'Vmag', 'Jmag', 'Hmag', 'Kmag', 'discoveredByTESS' ]
-    #props2 = [ 'RpValRJ', 'RpUppErrRJ', 'RpLowErrRJ', \
-    #           'MpValMJ', 'MpUppErrMJ', 'MpLowErrMJ' ]
+    
     props2 = [ 'RpValRE', 'RpUppErrRE', 'RpLowErrRE', \
                'MpValME', 'MpUppErrME', 'MpLowErrME' ]
     nAll = len( zRaw['planetName'] )
@@ -512,8 +400,7 @@ def extractProperties( zRaw, planetName ):
                         zOut[k] = float( zPlanet[k][ixOthers[i]] )
                         break
         # Do similar for the properties that require uncertainties (props2):
-        #z = [ [ 'RpValRJ', 'RpUppErrRJ', 'RpLowErrRJ' ], \
-        #      [ 'MpValMJ', 'MpUppErrMJ', 'MpLowErrMJ' ] ]
+       
         z = [ [ 'RpValRE', 'RpUppErrRE', 'RpLowErrRE' ], \
               [ 'MpValME', 'MpUppErrME', 'MpLowErrME' ] ]
         for k in z:
@@ -650,16 +537,10 @@ def readRawConfirmedNExScI( csvIpath ):
     z['RpValRE'] = t[1:,cols=='pl_rade'].flatten()
     z['RpUppErrRE'] = t[1:,cols=='pl_radeerr1'].flatten()
     z['RpLowErrRE'] = t[1:,cols=='pl_radeerr2'].flatten()
-    #z['RpValRJ'] = t[1:,cols=='pl_radj'].flatten()
-    #z['RpUppErrRJ'] = t[1:,cols=='pl_radjerr1'].flatten()
-    #z['RpLowErrRJ'] = t[1:,cols=='pl_radjerr2'].flatten()
     
     z['MpValME'] = t[1:,cols=='pl_masse'].flatten()
     z['MpUppErrME'] = t[1:,cols=='pl_masseerr1'].flatten()
     z['MpLowErrME'] = t[1:,cols=='pl_masseerr2'].flatten()
-    #z['MpValMJ'] = t[1:,cols=='pl_bmassj'].flatten()
-    #z['MpUppErrMJ'] = t[1:,cols=='pl_massjerr1'].flatten()
-    #z['MpLowErrMJ'] = t[1:,cols=='pl_massjerr2'].flatten()
     z['MpProvenance'] = t[1:,cols=='pl_bmassprov'].flatten()
 
     z['ecc'] = t[1:,cols=='pl_orbeccen'].flatten()
@@ -730,10 +611,7 @@ def readRawTOIsNExScI( fpath ):
     z['RpValRE'] = t[1:,cols=='pl_rade'].flatten()
     z['RpUppErrRE'] = t[1:,cols=='pl_radeerr1'].flatten()
     z['RpLowErrRE'] = t[1:,cols=='pl_radeerr2'].flatten()
-    #z['b'] = t[1:,cols=='pl_imppar'].flatten()
     z['T14hr'] = t[1:,cols=='pl_trandurh'].flatten()
-    #z['aRs'] = t[1:,cols=='pl_ratdor'].flatten()
-    #z['RpRs'] = t[1:,cols=='pl_ratror'].flatten()
     z['TstarK'] = t[1:,cols=='st_teff'].flatten()
     z['loggstarCGS'] = t[1:,cols=='st_logg'].flatten()
     z['RsRS'] = t[1:,cols=='st_rad'].flatten()

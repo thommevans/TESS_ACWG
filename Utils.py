@@ -178,8 +178,7 @@ def spectrumVega( makePlot=False ):
         # Compare to observed/model Vega from HST calibration:
         ipath = os.path.join( os.environ['PYSYN_CDBS'], 'calspec', \
                               'alpha_lyr_stis_010.fits' )
-        #ipath = os.path.join( os.environ['PYSYN_CDBS'], 'calspec', \
-        #'alpha_lyr_mod_004.fits' )
+        
         hst = pysynphot.FileSpectrum( ipath )
         plt.figure()
         plt.plot( wavMicr, Flam/Flam.max(), '-k', label='Kurucz model' )
@@ -276,7 +275,7 @@ def massRadiusChenKipping2017( RpRE_in ):
         plt.plot( log10MpME[ixs2], log10RpRE[ixs2], '-k' )
         plt.plot( log10MpME[ixs3], log10RpRE[ixs3], '-g' )
         plt.plot( log10MpME[ixs4], log10RpRE[ixs4], '-c' )
-        #plt.plot( [log10MpME_out], np.log10( RpRE_in ), 'ok' )
+       
         print( RpRE_in, MpME_out )
         pdb.set_trace()
         
@@ -346,8 +345,7 @@ def solarSystem():
     z['RpRE'] = {}
     for k in planets:
         z['RpRE'][k] = z['RpSI'][k]/REARTH_SI
-    #for k in planets:
-    #    print( '{0}: Rp={1:.1f}, T={2:.0f}'.format( k, z['RpRE'][k], z['TeqK'][k] ) )
+
     return z
 
 
@@ -436,7 +434,6 @@ def getThresholdTSM_REDUNDANT( RpRE, framework='ACWG' ):
 def getTSMStr_REDUNDANT( thresholdTSM ):
     if thresholdTSM=='ACWG':
         TSMStr = '* Kempton et al. (2018) TSM cuts applied'
-        #pdb.set_trace()
     elif thresholdTSM=='TOIs':
         TSMStr = 'Only targets with TSM>50 (Rp>1.5RE) or TSM>10 (Rp<1.5RE) shown'
     else:
@@ -520,7 +517,6 @@ def processDecRestriction( DecMin_deg, DecMax_deg ):
 
 def getStarColor( T ):
     if ( T<3400 ): # late-M
-        #c = np.array( [227,26,28] )/256.
         c = np.array( [178,24,43] )/256.
     elif ( T>=3400 )*( T<3800 ): # early-M
         c = np.array( [252,78,42] )/256.
@@ -551,8 +547,7 @@ def getAllStarColors():
     c['late-F'] = getStarColor( 6500 )
     c['early-F'] = getStarColor( 7200 )
     c['OBA'] = getStarColor( 7500 )
-    #SpTs = [ 'OBA', 'early-F', 'late-F', 'early-G', 'late-G', \
-    #         'early-K', 'late-K', 'early-M', 'late-M' ]
+    
     SpTs = [ 'late-M', 'early-M', 'late-K', 'early-K', \
              'late-G', 'early-G', 'late-F', 'early-F', 'OBA' ]
     return c, SpTs
