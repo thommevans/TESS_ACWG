@@ -753,9 +753,6 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
             # Indices inside box above the TSM threshold:
             RpREj = 0.5*( Rgrid[j]+Rgrid[j+1] )
 
-            predSM = getFifthPredicted(SM[0], Rgrid[j+1], Rgrid[j], Tgrid[i+1], Tgrid[i])
-            print('Radius: (', Rgrid[j], ', ', Rgrid[j+1], ') Temperature: (', Tgrid[i], ', ', Tgrid[i+1],') SM: ', predSM)
-
             #Find the threshold SM for the cell
             if SM[0] == 'TSM':
                 SMj, SMstr = survey['thresholdTSM']( RpREj, framework=framework )
@@ -1400,9 +1397,7 @@ def readPredictedProperties(SMFlag = 'TSM'):
     Kmag = z['Kmag']
 
     ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
-    print( '\nReading in {0:.0f} planets total.'.format( len( SM ) ) )
-    print( 'Returning {0:.0f} planets with radii, {1}, and Teq values.'\
-           .format( ixs.sum(), SMFlag ) )
+    
     outp = { 'SM': SM[ixs], 'cad2min': cad2min, 'TeqK':TeqK[ixs], \
              'aRs':aRs [ixs], 'Pday':Pday[ixs], 'Insol':Insol[ixs], \
              'MsValMS':MsMS[ixs], 'RsRS':RsRS[ixs], 'TstarK':TstarK[ixs], \
