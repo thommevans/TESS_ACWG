@@ -45,6 +45,35 @@ def targetsWithPublishedConfirmation():
 
     return confirmedFpath
 
+def targetsConfirmedTESS():
+    """
+    Planets confirmed by TESS from NASA Planet Archive.
+    
+    """
+    
+    date = str(datetime.date(datetime.now()))
+    path = 'PS_TESS_'+date[:-3]+'.csv'
+    confirmedFpath = path
+    
+    default_query = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+ps+where+disc_facility+=+%27Transiting%20Exoplanet%20Survey%20Satellite%20(TESS)%27&format=csv"
+    
+    add_few_elements = ','.join(['tic_id'])
+        
+    all_planets =  requests.get(default_query.split('*')[0] + add_few_elements + default_query.split('*')[1]) 
+    
+    all_planets = all_planets.text.split('\n')
+    
+    planets_df = pd.DataFrame(columns=all_planets[0].split(','), 
+                              data = [i.split(',') for i in all_planets[1:-1]])
+    planets_df = planets_df.replace(to_replace='', value=np.nan)
+
+    
+    for i in planets_df:
+        planets_df[i] = planets_df[i].str.replace('"', "")
+    planets_df.head()
+    planets_df.to_csv(confirmedFpath, index=False)
+
+    return confirmedFpath
 
 def targetsUnpublishedTOIs():
     """
@@ -78,4 +107,3 @@ def targetsUnpublishedTOIs():
     
     return toiFpath
 
-targetsUnpublishedTOIs()
