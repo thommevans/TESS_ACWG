@@ -692,8 +692,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
               horizontalalignment='left', verticalalignment='bottom' )
    
     otherNotes = 'No bright limits have been applied\n'
-    otherNotes += 'Numbers in square brackets are {0} values'.format( SM[0] )   
-    otherNotes += 'Asterisks by TOIs with {0} higher than fifth-highest predicted (Barclay et al. 2018)'.format(SM[0])
+    otherNotes += '{0} values in brackets, asterisks are above 5th predicted (Barclay et al. 2018)\n'.format( SM[0] )   
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
    
@@ -770,12 +769,16 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                 nwrite = min( [ nij, nList ] ) # Number is number above threshold in cell or 5
                 dy = ( yLines[j+1]-yLines[j] )/float(nList+0.5)
                 y0 = yLines[j]+4.8*dy
+
+                predSM = getFifthPredicted(SM[0], Rgrid[j+1], Rgrid[j], Tgrid[i+1], Tgrid[i])
+                print('TeqK: ({0}, {1}), RpRE: ({2}, {3}), predSM: {4}'.format(str(Tgrid[i]),  \
+                    str(Tgrid[i+1]), str(Rgrid[j]), str(Rgrid[j+1]), str(predSM)))
+                    
                 for k in range( nwrite ): #For each planet (max 5)
                     ytxt = y0-k*dy
                     plStr = pl[ixs][k].replace( ' ', '' )
                     plStr = '{0} [{1:.0f}]'.format( plStr, SM[1][ixs][k] ) #Planet Name [SM]
-                    
-                    predSM = getFifthPredicted(SM[0], Rgrid[j+1], Rgrid[j], Tgrid[i+1], Tgrid[i])
+                
                     if SM[1][ixs][k] >= predSM:
                         plStr += '*'
 
