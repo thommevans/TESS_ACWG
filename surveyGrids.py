@@ -150,7 +150,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     # Exclude targets outside the Dec limits:
     DecStr, DecMin_deg, DecMax_deg = Utils.processDecRestriction( DecMin_deg, DecMax_deg )
     ixsDec = ( z['Dec_deg'][ixs0]>=DecMin_deg )*( z['Dec_deg'][ixs0]<=DecMax_deg )
-    RADecStr = '{0}\n{1}'.format( RAStr, DecStr )
+    RADecStr = '{0}\n{1}\n No bright limits have been applied'.format( RAStr, DecStr )
     ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec]
     
     pl = z['planetName'][ixs]
@@ -691,8 +691,8 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
     fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
               horizontalalignment='left', verticalalignment='bottom' )
    
-    otherNotes = 'No bright limits have been applied\n'
-    otherNotes += '{0} values in brackets, asterisks are above 5th predicted (Barclay et al. 2018)\n'.format( SM[0] )   
+    otherNotes = '{0} values are listed in brackets \n'.format( SM[0] )   
+    otherNotes += 'TOIs with asterisk have {0} above fifth highest predicted in range (Barclay et al. 2018)'.format(SM[0])
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
    
@@ -771,8 +771,6 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                 y0 = yLines[j]+4.8*dy
 
                 predSM = getFifthPredicted(SM[0], Rgrid[j+1], Rgrid[j], Tgrid[i+1], Tgrid[i])
-                print('TeqK: ({0}, {1}), RpRE: ({2}, {3}), predSM: {4}'.format(str(Tgrid[i]),  \
-                    str(Tgrid[i+1]), str(Rgrid[j]), str(Rgrid[j+1]), str(predSM)))
                     
                 for k in range( nwrite ): #For each planet (max 5)
                     ytxt = y0-k*dy
@@ -1201,7 +1199,7 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
     ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
     print( '\nReading in {0:.0f} TOIs total.'.format( n0 ) )
     print( 'Returning {0:.0f} TOIs with radii, {1}, and Teq values.'\
-           .format( ixs.sum(), SMFlag ) )
+           .format( ixs.sum(), SMFlag ) )    
     outp = { 'planetName':planetName[ixs], 'SM':SM[ixs], 'RpRs':RpRs[ixs], \
              'RA_deg':RA[ixs], 'RA_hr':RAhr[ixs], 'Dec_deg':Dec[ixs], \
              'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], 'Jmag':Jmag[ixs], \

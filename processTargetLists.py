@@ -2,7 +2,7 @@ import pdb, sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from . import Utils
+from . import Utils, downloadTargetLists
 
 
 """
@@ -39,7 +39,8 @@ def Confirmed( csvIpath='', pklOdir='' ):
     return opath
 
 def TOIs( csvIpath='', pklOdir='' ):
-    zAll, zMissing, dateStr = readTOIsNExScI( csvIpath )
+    z, zMissing, dateStr = readTOIsNExScI( csvIpath )
+    zAll = checkTOIsTESSCP(z)
     zOut = { 'missingProperties':zMissing, 'allVals':zAll, 'dateStr':dateStr }
     oname = 'toiProperties.pkl'
     opath = os.path.join( pklOdir, oname )
@@ -646,4 +647,37 @@ def readRawTOIsNExScI( fpath ):
     z['RpUppErrRJ'] = z['RpUppErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpLowErrRJ'] = z['RpLowErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpRs'] = ( z['RpValRE']*Utils.REARTH_SI )/( z['RsRS']*Utils.RSUN_SI )
+
     return z
+
+def checkTOIsTESSCP (zIN):
+
+    TOI_TICID = zIN['TICID']
+
+    CP_TICIDpath = downloadTargetLists.targetsConfirmedTESS()
+    idir = os.path.dirname(__file__)
+    ipath = os.path.join(idir, CP_TICIDpath)
+
+    if not os.path.isfile(ipath):
+        raise Exception("TESS CP TICID file not found")
+
+    t = np.genfromtxt( ipath, dtype=str, delimiter=',', invalid_raise=False )
+
+    CP_TICID = t[1:]
+
+    ixs = []
+    for i in range(len(TOI_TICID)):
+        inCP = False
+        for CP in CP_TICID:
+            if TOI_TICID[i] == CP:
+                inCP = True
+                break
+        if not inCP:
+            ixs.append(i)
+    
+    zOut = {}
+    for key in zIN:
+        inList = zIN[key]
+        zOut[key] = np.array([inList[n] for n in range(len(inList)) if n in ixs])
+    
+    return zOut     
