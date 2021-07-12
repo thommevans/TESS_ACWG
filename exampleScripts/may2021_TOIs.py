@@ -22,3 +22,4 @@ survey = { 'surveyName':'ACWG', 'framework':'ACWG', \
            'thresholdTSM':surveySetup.thresholdTSM, 'thresholdESM':surveySetup.thresholdESM }
 RARanges = 'completeSet'
 figFpaths = surveyGrids.TOIs( ipath=toiPickle, survey=survey, RARanges=RARanges, SMFlag = 'ESM' )
+ASCII = surveyGrids.CreateASCII( survey=survey, SMFlag='ESM' )

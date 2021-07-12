@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import pickle
 from . import Utils, processTargetLists
 from . import surveySetup
+from astropy.io import ascii
+from astropy.table import Table
 
 FIGDIR = os.path.join( os.getcwd(), 'Figures' )
     
@@ -84,6 +86,8 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
         for k in list( f.keys() ):
             fnew = f[k].replace( 'Confirmed_', 'Confirmed_{0}_'\
                                  .format( survey['obsSample'] ) )
+            if os.path.isfile( fnew ):
+                os.remove( fnew )
             os.rename( f[k], fnew )
             plt.close( 'all' )
     return None
@@ -111,7 +115,7 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM' )
                                              addSignature=addSignature, survey=survey, \
                                              RAMin_hr=RA[0], RAMax_hr=RA[1], \
                                              DecMin_deg=i[1], DecMax_deg=i[2],
-                                             SMFlag = SMFlag )
+                                             SMFlag = SMFlag )[:2]
             opaths[i[0]][r] = []
             for f in figPaths: # PDFs and PNGs
                 for k in list( f.keys() ):
@@ -120,6 +124,9 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM' )
                         fnew = f[k].replace( '.pdf', '_{0}_{1}.pdf'.format( i[0], r ) )
                     elif opath.find( '.png' )>0:
                         fnew = f[k].replace( '.png', '_{0}_{1}.png'.format( i[0], r ) )
+                    if os.path.isfile( fnew ):
+                        os.remove( fnew )
+
                     os.rename( f[k], fnew )
                     opaths[i[0]][r] += [ fnew ]
             plt.close( 'all' )
@@ -163,7 +170,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, titleStr=titleStr, \
+    fig2, ax2, plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, titleStr=titleStr, \
                                dateStr=dateStr, survey=survey, RADecStr=RADecStr )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
@@ -202,7 +209,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
         opathsPNG[k] = opathk_png
         print( '{0}\n{1}'.format( opathk, opathk_png ) )
         print( 'RADecStr = {0}'.format( RADecStr ) )
-    return opathsPDF, opathsPNG
+    return opathsPDF, opathsPNG, plList
     
     
 def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=True, SMFlag = 'TSM' ):
@@ -239,7 +246,7 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Tr
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr )
+    fig2, ax2, plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     if publishedMasses==False:
@@ -323,7 +330,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
                                     
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr, \
+    fig2, ax2, plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr, \
                                dateStr=dateStr, survey=survey, RADecStr=RADecStr  )
     fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                horizontalalignment='left', verticalalignment='top' )
@@ -674,7 +681,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
     for i in range( nR ):
         ax.plot( [xLines.min(),xLines.max()], [yLines[i],yLines[i]], '-', \
                  c=cgrid, zorder=1 )
-    ax, SMstr = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
+    ax, SMstr, plList = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                             xLines, yLines, survey=survey )
 
     formatAxisTicks( ax )
@@ -701,7 +708,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
     ax.set_xlim( [ xLines.min()-dx, xLines.max()+dx ] )
     ax.set_ylim( [ yLines.min()-dy, yLines.max()+dy ] )
 
-    return fig, ax
+    return fig, ax, plList
 
 
 def formatAxisTicks( ax ):
@@ -734,7 +741,7 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
     xLines, yLines: x and y values for graph 
     survey: dictionary of survey values
     """
-        
+    plNames = []    
     framework = survey['framework']
     nx = len( xLines )-1 # Number of lines on x axis
     ny = len( yLines )-1 # Number of lines on y axis
@@ -790,8 +797,8 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                              horizontalalignment='left', verticalalignment='center' )
                     ck = Utils.getStarColor( TstarK[ixs][k] )
                     ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
-                
-    return ax, SMstr
+                    plNames.append(plStr)
+    return ax, SMstr, plNames
 
 
 def generateAxisScatter( xlim=[0,3100], ylim=[0,26], wideFormat=False, \
@@ -1434,7 +1441,38 @@ def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0
     return  highestSMs[0]
             
 
+def CreateASCII( survey={}, SMFlag = 'TSM' ):
+    
+    ifile = open( 'toiProperties.pkl', 'rb' )
+    z0 = pickle.load( ifile )
+    ifile.close()
+    z = z0['allVals']
 
+    values = ['planetName', 'TICID', SMFlag, 'RA_deg', 'Dec_deg', 'Vmag', 'Jmag', 'Hmag', 'Kmag',\
+              'K', 'Pday', 'TstarK', 'MpValME', 'MsMS']
+    indices = []   
+    keys = transmissionGridTOIs( survey=survey, SMFlag=SMFlag )[2]
+
+    for key in keys:
+        index = list( z['planetName'] ).index( key[0:key.index( ')' )+1] )
+        indices.append( index )
+        
+    ASCII = {}
+    
+    for value in values:
+        ASCII[value] = []
+        for j in indices:
+            ASCII[value].append( z[value][j] )
+    
+    if SMFlag == 'TSM':
+        fname = 'RVvaluesByTSM.txt'
+    else:
+        fname = 'RVvaluesByESM.txt'
+        
+    data = Table( list( ASCII.values() ), names=ASCII.keys() )
+    ascii.write( data, fname, format='basic', overwrite=True )
+
+    return fname
 
 
 
