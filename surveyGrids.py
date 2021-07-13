@@ -698,7 +698,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
     fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
               horizontalalignment='left', verticalalignment='bottom' )
    
-    otherNotes = '{0} values are listed in brackets \n'.format( SM[0] )   
+    otherNotes = '{0} values are listed in square brackets \n'.format( SM[0] )   
     otherNotes += 'Asterisks indicate top-5 predicted (Barclay et al., 2018)'.format(SM[0])
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
