@@ -97,10 +97,11 @@ def JHKVmags( TICIDs ):
     
     for planet in dictquertemp:
         magsDictByID[planet['ID']] = {'Jmag':planet['Jmag'],'Hmag':planet['Hmag'],\
-                                      'Kmag':planet['Kmag'], 'Vmag':planet['Vmag']}
+                                      'Kmag':planet['Kmag'],'Vmag':planet['Vmag'], \
+                                       'Imag':planet['imag'] }
     
     magsDict = {}
-    mags = ['Jmag', 'Hmag', 'Kmag', 'Vmag']
+    mags = ['Jmag', 'Hmag', 'Kmag', 'Vmag', 'Imag']
     
     for mag in mags:
         maglist = []
