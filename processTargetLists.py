@@ -220,7 +220,7 @@ def readTOIsNExScI( fpath ):
                                     zAll['TstarK'], zAll['Kmag'] )
     zAll['MsMS'] = Utils.computeStellarMass( zAll['RsRS'], zAll['loggstarCGS'])
     
-    zAll['K'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
+    zAll['Kamp'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
 
     zMissing = {}
     for k in ['TSM','ESM']:

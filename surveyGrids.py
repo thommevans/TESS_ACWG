@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pickle
 from . import Utils, processTargetLists
 from . import surveySetup
-from astropy.io import ascii
+#from astropy.io import ascii
 from astropy.table import Table
 
 FIGDIR = os.path.join( os.getcwd(), 'Figures' )
@@ -1448,8 +1448,9 @@ def CreateASCII( survey={}, SMFlag = 'TSM' ):
     ifile.close()
     z = z0['allVals']
 
-    values = ['planetName', 'TICID', SMFlag, 'RA_deg', 'Dec_deg', 'Vmag', 'Jmag', 'Hmag', 'Kmag',\
-              'K', 'Pday', 'TstarK', 'MpValME', 'MsMS']
+    values = ['planetName', 'TICID', 'RA_deg', 'Dec_deg', \
+              'Vmag', 'Jmag', 'Hmag', 'Kmag',\
+              SMFlag, 'Kamp', 'Pday', 'TstarK', 'MsMS', 'MpValME', 'RpValRE' ]
     indices = []   
     keys = transmissionGridTOIs( survey=survey, SMFlag=SMFlag )[2]
 
@@ -1458,21 +1459,63 @@ def CreateASCII( survey={}, SMFlag = 'TSM' ):
         indices.append( index )
         
     ASCII = {}
-    
     for value in values:
         ASCII[value] = []
         for j in indices:
             ASCII[value].append( z[value][j] )
-    
-    if SMFlag == 'TSM':
-        fname = 'RVvaluesByTSM.txt'
-    else:
-        fname = 'RVvaluesByESM.txt'
-        
-    data = Table( list( ASCII.values() ), names=ASCII.keys() )
-    ascii.write( data, fname, format='basic', overwrite=True )
+            
+    # Sort by declination coordinate:
+    ixs = np.argsort( ASCII['Dec_deg'] )
+    for value in values:
+        ASCII[value] = np.array( ASCII[value] )[ixs]
 
-    return fname
+    col0 = 'Target'.rjust( 18 )
+    col1 = 'TICID'.rjust( 15 )
+    col2 = 'RA(deg)'.rjust( 9 )
+    col3 = 'Dec(deg)'.rjust( 10 )
+    col4a = 'Vmag'.rjust( 7 )
+    col4b = 'Jmag'.rjust( 7 )
+    col4c = 'Hmag'.rjust( 7 )
+    col4d = 'Kmag'.rjust( 7 )
+    col5 = SMFlag.rjust( 10 )
+    col6 = 'K(m/s)'.rjust( 8 )
+    col7 = 'P(d)'.rjust( 10 )
+    col8 = 'Teff(K)'.rjust( 10 )
+    col9 = 'Ms(MS)'.rjust( 10 )
+    col10 = 'Mp(ME)'.rjust( 10 )
+    col11 = 'Rp(RE)'.rjust( 10 )
+    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}\n'\
+           .format( col0, col1, col2, col3, \
+                    col4a, col4b, col4c, col4d, \
+                    col5, col6, col7, col8, col9, col10, col11 )
+    
+    ncol = [ 18, 15, 9, 10, 7, 7, 7, 7, 10, 8, 10, 10, 10, 10, 10 ] # column width
+    ndps = [  0,  0, 2,  2, 1, 1, 1, 1,  1, 1,  3,  0,  1,  1,  1 ] # decimal places
+    ostr += '#{0}'.format( 150*'-' )
+    n = len( ASCII['planetName'] )
+    m = len( values )
+    for i in range( n ): # loop over each TOI
+        ostr += '\n  '
+        for j in range( m ): # loop over each property
+            k = values[j]
+            if ( k!='planetName' )*( k!='TICID' ): # numbers
+                ostr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+            else: # strings
+                ostr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
+
+    # Write to file:
+    if SMFlag == 'TSM':
+        opath = os.path.join( os.getcwd(), 'RVvaluesByTSM.txt' )
+    else:
+        opath = os.path.join( os.getcwd(), 'RVvaluesByESM.txt' )
+    ofile = open( opath, 'w' )
+    ofile.write( ostr )
+    ofile.close()
+    print( '\nSaved:\n{0}'.format( opath ) )
+    #data = Table( list( ASCII.values() ), names=ASCII.keys() )
+    #ascii.write( data, fname, format='basic', overwrite=True )
+
+    return opath
 
 
 
