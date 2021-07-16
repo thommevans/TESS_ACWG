@@ -1457,9 +1457,8 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
     z0 = pickle.load( ifile )
     ifile.close()
     z = z0['allVals']
-
     values = ['planetName', 'TICID', 'RA_deg', 'Dec_deg', \
-              'Vmag', 'Jmag', 'Hmag', 'Kmag',\
+              'Vmag', 'Imag', 'Jmag', 'Hmag', 'Kmag',\
               SMFlag, 'Kamp', 'Pday', 'TstarK', 'MsMS', 'MpValME', 'RpValRE' ]
     indices = []   
     keys = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs )[2]
@@ -1484,9 +1483,10 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
     col2 = 'RA(deg)'.rjust( 9 )
     col3 = 'Dec(deg)'.rjust( 10 )
     col4a = 'Vmag'.rjust( 7 )
-    col4b = 'Jmag'.rjust( 7 )
-    col4c = 'Hmag'.rjust( 7 )
-    col4d = 'Kmag'.rjust( 7 )
+    col4b = 'Imag'.rjust( 7 )
+    col4c = 'Jmag'.rjust( 7 )
+    col4d = 'Hmag'.rjust( 7 )
+    col4e = 'Kmag'.rjust( 7 )
     col5 = SMFlag.rjust( 10 )
     col6 = 'K(m/s)'.rjust( 8 )
     col7 = 'P(d)'.rjust( 10 )
@@ -1494,14 +1494,14 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
     col9 = 'Ms(MS)'.rjust( 10 )
     col10 = 'Mp(ME)'.rjust( 10 )
     col11 = 'Rp(RE)'.rjust( 10 )
-    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}\n'\
+    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}\n'\
            .format( col0, col1, col2, col3, \
-                    col4a, col4b, col4c, col4d, \
+                    col4a, col4b, col4c, col4d, col4e, \
                     col5, col6, col7, col8, col9, col10, col11 )
     
-    ncol = [ 18, 15, 9, 10, 7, 7, 7, 7, 10, 8, 10, 10, 10, 10, 10 ] # column width
-    ndps = [  0,  0, 2,  2, 1, 1, 1, 1,  1, 1,  3,  0,  1,  1,  1 ] # decimal places
-    ostr += '#{0}'.format( 150*'-' )
+    ncol = [ 18, 15, 9, 10, 7, 7, 7, 7, 7, 10, 8, 10, 10, 10, 10, 10 ] # column width
+    ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1,  1, 1,  3,  0,  1,  1,  1 ] # decimal places
+    ostr += '#{0}'.format( 160*'-' )
     n = len( ASCII['planetName'] )
     m = len( values )
     for i in range( n ): # loop over each TOI
