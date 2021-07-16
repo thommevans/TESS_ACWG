@@ -1459,7 +1459,8 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
     z = z0['allVals']
     values = ['planetName', 'TICID', 'RA_deg', 'Dec_deg', \
               'Vmag', 'Imag', 'Jmag', 'Hmag', 'Kmag',\
-              SMFlag, 'Kamp', 'Pday', 'TstarK', 'MsMS', 'MpValME', 'RpValRE' ]
+              SMFlag, 'Kamp', 'Pday', 'TstarK', 'MsMS', \
+              'MpValME', 'RpValRE' ]
     indices = []   
     keys = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs )[2]
 
@@ -1472,12 +1473,26 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
         ASCII[value] = []
         for j in indices:
             ASCII[value].append( z[value][j] )
+    n = len( ASCII['planetName'] )
             
     # Sort by declination coordinate:
     ixs = np.argsort( ASCII['Dec_deg'] )
     for value in values:
         ASCII[value] = np.array( ASCII[value] )[ixs]
+    loggstarCGS = z['loggstarCGS'][ixs]
 
+    # Correct missing Imags (probably most of them):
+    ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
+    m = len( ixs )
+    print( '\nEstimating {0:.0f} Imags...'.format( m ) )
+    for i in range( m ):
+        Jmag = ASCII['Jmag'][ixs[i]]
+        TstarK = ASCII['TstarK'][ixs[i]]
+        loggCGS = loggstarCGS[ixs[i]]
+        if np.isfinite( Jmag )*( TstarK<31000 )*np.isfinite( loggCGS ):
+            Imag = Utils.convertMag( Jmag, TstarK, loggCGS, inputMag='J', outputMag='I' )
+            ASCII['Imag'][ixs[i]] = Imag
+        
     col0 = 'Target'.rjust( 18 )
     col1 = 'TICID'.rjust( 15 )
     col2 = 'RA(deg)'.rjust( 9 )
@@ -1502,7 +1517,6 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
     ncol = [ 18, 15, 9, 10, 7, 7, 7, 7, 7, 10, 8, 10, 10, 10, 10, 10 ] # column width
     ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1,  1, 1,  3,  0,  1,  1,  1 ] # decimal places
     ostr += '#{0}'.format( 160*'-' )
-    n = len( ASCII['planetName'] )
     m = len( values )
     for i in range( n ): # loop over each TOI
         ostr += '\n  '
