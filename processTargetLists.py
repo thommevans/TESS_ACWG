@@ -2,7 +2,7 @@ import pdb, sys, os
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from . import Utils, downloadTargetLists, TOIcheck
+from . import Utils, downloadTargetLists
 
 
 """
