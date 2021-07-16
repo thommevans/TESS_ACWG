@@ -21,5 +21,7 @@ survey = { 'surveyName':'ACWG', 'framework':'ACWG', \
            'gridEdges':surveySetup.gridEdges, 'preCuts':surveySetup.preCutsTOIs, \
            'thresholdTSM':surveySetup.thresholdTSM, 'thresholdESM':surveySetup.thresholdESM }
 RARanges = 'completeSet'
-figFpaths = surveyGrids.TOIs( ipath=toiPickle, survey=survey, RARanges=RARanges, SMFlag = 'ESM' )
-ASCII = surveyGrids.CreateASCII( survey=survey, SMFlag='ESM' )
+onlyPCs = 0 # 1 = True, 0 = False
+figFpaths = surveyGrids.TOIs( ipath=toiPickle, survey=survey, RARanges=RARanges, \
+                             SMFlag = 'ESM', onlyPCs = onlyPCs )
+ASCII = surveyGrids.CreateASCII( survey=survey, SMFlag='ESM', onlyPCs = onlyPCs )

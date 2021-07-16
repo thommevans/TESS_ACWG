@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import pickle
 from . import Utils, processTargetLists
 from . import surveySetup
-from astropy.io import ascii
+#from astropy.io import ascii
 from astropy.table import Table
 
 FIGDIR = os.path.join( os.getcwd(), 'Figures' )
@@ -93,7 +93,7 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
     return None
 
 
-def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM' ):
+def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', onlyPCs = False ):
     """
     """
     wideFormat = True
@@ -115,7 +115,7 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM' )
                                              addSignature=addSignature, survey=survey, \
                                              RAMin_hr=RA[0], RAMax_hr=RA[1], \
                                              DecMin_deg=i[1], DecMax_deg=i[2],
-                                             SMFlag = SMFlag )[:2]
+                                             SMFlag = SMFlag, onlyPCs = onlyPCs )[:2]
             opaths[i[0]][r] = []
             for f in figPaths: # PDFs and PNGs
                 for k in list( f.keys() ):
@@ -141,13 +141,15 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
                           addSignature=True, survey={}, \
                           RAMin_hr=None, RAMax_hr=None, \
                           DecMin_deg=None, DecMax_deg=None, \
-                          SMFlag = 'TSM' ):
+                          SMFlag='TSM', onlyPCs=False ):
     """
     TOIs that have not been confirmed.
     """
     showGrid = True
     z, dateStr = readTOIProperties( ipath=ipath, SMFlag=SMFlag )
     ostr = 'TOIs'
+    if onlyPCs == True:
+        ostr = 'TOIs_onlyPCs'
 
     n0 = len( z['planetName'] )
     ixs0, cutStr, titleStr = survey['preCuts']( z )
@@ -158,8 +160,13 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     DecStr, DecMin_deg, DecMax_deg = Utils.processDecRestriction( DecMin_deg, DecMax_deg )
     ixsDec = ( z['Dec_deg'][ixs0]>=DecMin_deg )*( z['Dec_deg'][ixs0]<=DecMax_deg )
     RADecStr = '{0}\n{1}\n No bright limits have been applied'.format( RAStr, DecStr )
-    ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec]
     
+    if onlyPCs == True:
+        ixsPCs = ( [i[-4:]=='(PC)' for i in z['planetName'][ixs0]] )
+        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsPCs]
+    else:
+        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec]
+        
     pl = z['planetName'][ixs]
     Teq = z['TeqK'][ixs]
     Ts = z['TstarK'][ixs]
@@ -175,6 +182,8 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
+    if onlyPCs == True:
+        toiNote = 'Only TOIs with "PC" TFOPWG Disposition are displayed\n'
     toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
     fig2.text( 0.08, 0.91-0.10, toiNote, \
                c='black', fontsize=14, horizontalalignment='left', \
@@ -201,6 +210,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
                       horizontalalignment='right', verticalalignment='bottom' )
         if addSignature==True:
             onames[k] = onames[k].replace( '.pdf', '_wSignature.pdf' )
+        
         opathk = os.path.join( odir, onames[k] )
         figs[k].savefig( opathk )
         opathk_png = opathk.replace( '.pdf', '.png' )
@@ -698,7 +708,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
     fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
               horizontalalignment='left', verticalalignment='bottom' )
    
-    otherNotes = '{0} values are listed in brackets \n'.format( SM[0] )   
+    otherNotes = '{0} values are listed in square brackets \n'.format( SM[0] )   
     otherNotes += 'Asterisks indicate top-5 predicted (Barclay et al., 2018)'.format(SM[0])
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
@@ -1441,38 +1451,83 @@ def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0
     return  highestSMs[0]
             
 
-def CreateASCII( survey={}, SMFlag = 'TSM' ):
+def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
     
     ifile = open( 'toiProperties.pkl', 'rb' )
     z0 = pickle.load( ifile )
     ifile.close()
     z = z0['allVals']
 
-    values = ['planetName', 'TICID', SMFlag, 'RA_deg', 'Dec_deg', 'Vmag', 'Jmag', 'Hmag', 'Kmag',\
-              'K', 'Pday', 'TstarK', 'MpValME', 'MsMS']
+    values = ['planetName', 'TICID', 'RA_deg', 'Dec_deg', \
+              'Vmag', 'Jmag', 'Hmag', 'Kmag',\
+              SMFlag, 'Kamp', 'Pday', 'TstarK', 'MsMS', 'MpValME', 'RpValRE' ]
     indices = []   
-    keys = transmissionGridTOIs( survey=survey, SMFlag=SMFlag )[2]
+    keys = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs )[2]
 
     for key in keys:
         index = list( z['planetName'] ).index( key[0:key.index( ')' )+1] )
         indices.append( index )
         
     ASCII = {}
-    
     for value in values:
         ASCII[value] = []
         for j in indices:
             ASCII[value].append( z[value][j] )
-    
-    if SMFlag == 'TSM':
-        fname = 'RVvaluesByTSM.txt'
-    else:
-        fname = 'RVvaluesByESM.txt'
-        
-    data = Table( list( ASCII.values() ), names=ASCII.keys() )
-    ascii.write( data, fname, format='basic', overwrite=True )
+            
+    # Sort by declination coordinate:
+    ixs = np.argsort( ASCII['Dec_deg'] )
+    for value in values:
+        ASCII[value] = np.array( ASCII[value] )[ixs]
 
-    return fname
+    col0 = 'Target'.rjust( 18 )
+    col1 = 'TICID'.rjust( 15 )
+    col2 = 'RA(deg)'.rjust( 9 )
+    col3 = 'Dec(deg)'.rjust( 10 )
+    col4a = 'Vmag'.rjust( 7 )
+    col4b = 'Jmag'.rjust( 7 )
+    col4c = 'Hmag'.rjust( 7 )
+    col4d = 'Kmag'.rjust( 7 )
+    col5 = SMFlag.rjust( 10 )
+    col6 = 'K(m/s)'.rjust( 8 )
+    col7 = 'P(d)'.rjust( 10 )
+    col8 = 'Teff(K)'.rjust( 10 )
+    col9 = 'Ms(MS)'.rjust( 10 )
+    col10 = 'Mp(ME)'.rjust( 10 )
+    col11 = 'Rp(RE)'.rjust( 10 )
+    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}\n'\
+           .format( col0, col1, col2, col3, \
+                    col4a, col4b, col4c, col4d, \
+                    col5, col6, col7, col8, col9, col10, col11 )
+    
+    ncol = [ 18, 15, 9, 10, 7, 7, 7, 7, 10, 8, 10, 10, 10, 10, 10 ] # column width
+    ndps = [  0,  0, 2,  2, 1, 1, 1, 1,  1, 1,  3,  0,  1,  1,  1 ] # decimal places
+    ostr += '#{0}'.format( 150*'-' )
+    n = len( ASCII['planetName'] )
+    m = len( values )
+    for i in range( n ): # loop over each TOI
+        ostr += '\n  '
+        for j in range( m ): # loop over each property
+            k = values[j]
+            if ( k!='planetName' )*( k!='TICID' ): # numbers
+                ostr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+            else: # strings
+                ostr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
+
+    # Write to file:
+    oname = f'RVvaluesBy{SMFlag}.txt'
+    if onlyPCs == True:
+        oname = f'RVValuesBy{SMFlag}_onlyPCs.txt'
+
+    opath = os.path.join( os.getcwd(), oname )
+
+    ofile = open( opath, 'w' )
+    ofile.write( ostr )
+    ofile.close()
+    print( '\nSaved:\n{0}'.format( opath ) )
+    #data = Table( list( ASCII.values() ), names=ASCII.keys() )
+    #ascii.write( data, fname, format='basic', overwrite=True )
+
+    return opath
 
 
 

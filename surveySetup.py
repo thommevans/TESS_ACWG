@@ -55,7 +55,7 @@ def preCutsTOIs( z ):
 
 def thresholdTSM( RpRE, framework='ACWG' ):
     if framework=='ACWG':
-        TSMstr = '* Kempton et al. (2018) TSM cuts applied'
+        TSMstr = 'Kempton et al. (2018) TSM cuts have been applied'
         if RpRE<1.50: # 1. Terrestrials
             TSM = 10
         elif ( RpRE>=1.50 )*( RpRE<2.75 ): # 2. Small sub-Neptunes

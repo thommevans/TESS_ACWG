@@ -97,10 +97,11 @@ def JHKVmags( TICIDs ):
     
     for planet in dictquertemp:
         magsDictByID[planet['ID']] = {'Jmag':planet['Jmag'],'Hmag':planet['Hmag'],\
-                                      'Kmag':planet['Kmag'], 'Vmag':planet['Vmag']}
+                                      'Kmag':planet['Kmag'],'Vmag':planet['Vmag'], \
+                                       'Imag':planet['imag'] }
     
     magsDict = {}
-    mags = ['Jmag', 'Hmag', 'Kmag', 'Vmag']
+    mags = ['Jmag', 'Hmag', 'Kmag', 'Vmag', 'Imag']
     
     for mag in mags:
         maglist = []
@@ -563,6 +564,7 @@ def computeStellarMass( RsRS, loggstarCGS ):
 
 def computeRVSemiAmp( Pday, MpME, MsMS ):
     """
+    Returns RV semi-amplitude in m/s.
     Equation from: https://exoplanetarchive.ipac.caltech.edu/docs/poet_calculations.html
     """
     MpMJ = MpME * MEARTH_SI / MJUP_SI # converts mass from Earth unit to Jupiter unit
@@ -572,7 +574,6 @@ def computeRVSemiAmp( Pday, MpME, MsMS ):
     K = 203 * (Pday)**(-1/3) * \
         ((MpMJ * math.sin(i)) / (MsMS + 9.458e-4 * (MpMJ)**(2/3))) * \
         (1 / (1 - e**2)**(1/2))
-
     return K
 
 

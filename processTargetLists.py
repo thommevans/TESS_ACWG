@@ -213,6 +213,7 @@ def readTOIsNExScI( fpath ):
     zAll['Hmag'] = Utils.JHKVmags(zAll['TICID'])['Hmag']
     zAll['Kmag'] = Utils.JHKVmags(zAll['TICID'])['Kmag']
     zAll['Vmag'] = Utils.JHKVmags(zAll['TICID'])['Vmag']
+    zAll['Imag'] = Utils.JHKVmags(zAll['TICID'])['Imag']
 
     zAll['TSM'] = Utils.computeTSM( zAll['RpValRE'], zAll['MpValME'], \
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )
@@ -220,7 +221,7 @@ def readTOIsNExScI( fpath ):
                                     zAll['TstarK'], zAll['Kmag'] )
     zAll['MsMS'] = Utils.computeStellarMass( zAll['RsRS'], zAll['loggstarCGS'])
     
-    zAll['K'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
+    zAll['Kamp'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
 
     zMissing = {}
     for k in ['TSM','ESM']:
@@ -617,6 +618,7 @@ def readRawTOIsNExScI( fpath ):
     z['loggstarCGS'] = t[1:,cols=='st_logg'].flatten()
     z['RsRS'] = t[1:,cols=='st_rad'].flatten()
     z['Tmag'] = t[1:,cols=='st_tmag'].flatten()
+   
     # TODO = Request JHK mags are added.
     TFOP = t[1:,cols=='tfopwg_disp'].flatten()
     ixs = ( TFOP!='KP' )*( TFOP!='FP' )*( TFOP!='FA' )
@@ -631,7 +633,7 @@ def readRawTOIsNExScI( fpath ):
     def convertMissing( zarr ):
         zarrOut = np.ones( len( zarr ) )
         ixs = ( zarr!='' )
-        zarrOut[ixs] = np.abs( np.array( zarr[ixs], dtype=float ) )
+        zarrOut[ixs] = np.array( zarr[ixs], dtype=float ) 
         ixs = ( zarr=='' )
         zarrOut[ixs] = np.nan
         return zarrOut
@@ -647,7 +649,7 @@ def readRawTOIsNExScI( fpath ):
     z['RpUppErrRJ'] = z['RpUppErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpLowErrRJ'] = z['RpLowErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpRs'] = ( z['RpValRE']*Utils.REARTH_SI )/( z['RsRS']*Utils.RSUN_SI )
-
+    # print(f"Dec_deg: {list(z['Dec_deg'])}")
     return z
 
 def checkTOIsTESSCP (zIN):
