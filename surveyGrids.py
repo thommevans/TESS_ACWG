@@ -7,6 +7,11 @@ from . import Utils, processTargetLists
 from . import surveySetup
 #from astropy.io import ascii
 from astropy.table import Table
+try:
+    import pysynphot
+    pysynphotImport = True
+except:
+    pysynphotImport = False
 
 FIGDIR = os.path.join( os.getcwd(), 'Figures' )
     
@@ -138,7 +143,7 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', 
 
 
 def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
-                          addSignature=True, survey={}, \
+                          addSignature=False, survey={}, \
                           RAMin_hr=None, RAMax_hr=None, \
                           DecMin_deg=None, DecMax_deg=None, \
                           SMFlag='TSM', onlyPCs=False ):
@@ -222,7 +227,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     return opathsPDF, opathsPNG, plList
     
     
-def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=True, SMFlag = 'TSM' ):
+def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=False, SMFlag = 'TSM' ):
     """
     Confirmed TESS planets without published mass.
     Currently unused, may be out of date
@@ -1482,16 +1487,18 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
     loggstarCGS = z['loggstarCGS'][ixs]
 
     # Correct missing Imags (probably most of them):
-    ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
-    m = len( ixs )
-    print( '\nEstimating {0:.0f} Imags...'.format( m ) )
-    for i in range( m ):
-        Jmag = ASCII['Jmag'][ixs[i]]
-        TstarK = ASCII['TstarK'][ixs[i]]
-        loggCGS = loggstarCGS[ixs[i]]
-        if np.isfinite( Jmag )*( TstarK<31000 )*np.isfinite( loggCGS ):
-            Imag = Utils.convertMag( Jmag, TstarK, loggCGS, inputMag='J', outputMag='I' )
-            ASCII['Imag'][ixs[i]] = Imag
+    if pysynphotImport==True:
+        ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
+        m = len( ixs )
+        print( '\nEstimating {0:.0f} Imags...'.format( m ) )
+        for i in range( m ):
+            Jmag = ASCII['Jmag'][ixs[i]]
+            TstarK = ASCII['TstarK'][ixs[i]]
+            loggCGS = loggstarCGS[ixs[i]]
+            if np.isfinite( Jmag )*( TstarK<31000 )*np.isfinite( loggCGS ):
+                Imag = Utils.convertMag( Jmag, TstarK, loggCGS, \
+                                         inputMag='J', outputMag='I' )
+                ASCII['Imag'][ixs[i]] = Imag
         
     col0 = 'Target'.rjust( 18 )
     col1 = 'TICID'.rjust( 15 )
