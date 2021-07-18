@@ -72,7 +72,7 @@ def quickCycle1():
                      alpha=1, ms=j[4], label=j[3] )
         ax.legend( ncol=len( i[1] ), loc='lower right', bbox_to_anchor=[0.8,1], fontsize=16 )
         
-    pdb.set_trace()
+    # pdb.set_trace()
 
 
 def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
@@ -448,7 +448,7 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
         ix = ( pl==crossHair )
         ax0a.axvline( Teq[ix], c='HotPink' )
         ax0a.axhline( RpVal[ix], c='HotPink' )
-        pdb.set_trace()
+        # pdb.set_trace()
     if wideFormat==True:
         odirExt = 'survey{0}/wideFormat'.format( surveyModule )
     else:
@@ -1486,7 +1486,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
             ASCII[value].append( z[value][j] )
     n = len( ASCII['planetName'] )
     print( n )
-    pdb.set_trace()
+    # pdb.set_trace()
     # Sort by declination coordinate:
     ixs = np.argsort( ASCII['Dec_deg'] )
     for value in values:

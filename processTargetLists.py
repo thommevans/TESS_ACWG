@@ -666,8 +666,8 @@ def checkTOIsTESSCP (zIN):
 
     t = np.genfromtxt( ipath, dtype=str, delimiter=',', invalid_raise=False )
 
-    CP_TICID = t[1:]
-    CP_TICID = [CP[4::] for CP in CP_TICID]
+    CP_TICID = [CP[4::] for CP in t[1:]]
+    
     ixs = []
     for i in range(len(TOI_TICID)):
         inCP = False
