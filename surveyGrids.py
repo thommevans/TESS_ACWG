@@ -7,6 +7,11 @@ from . import Utils, processTargetLists
 from . import surveySetup
 #from astropy.io import ascii
 from astropy.table import Table
+try:
+    import pysynphot
+    pysynphotImport = True
+except:
+    pysynphotImport = False
 
 FIGDIR = os.path.join( os.getcwd(), 'Figures' )
     
@@ -138,7 +143,7 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', 
 
 
 def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
-                          addSignature=True, survey={}, \
+                          addSignature=False, survey={}, \
                           RAMin_hr=None, RAMax_hr=None, \
                           DecMin_deg=None, DecMax_deg=None, \
                           SMFlag='TSM', onlyPCs=False ):
@@ -177,8 +182,9 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2, plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, titleStr=titleStr, \
-                               dateStr=dateStr, survey=survey, RADecStr=RADecStr )
+    fig2, ax2, plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
+                                       titleStr=titleStr, dateStr=dateStr, \
+                                       survey=survey, RADecStr=RADecStr )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
@@ -222,7 +228,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     return opathsPDF, opathsPNG, plList
     
     
-def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=True, SMFlag = 'TSM' ):
+def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=False, SMFlag = 'TSM' ):
     """
     Confirmed TESS planets without published mass.
     Currently unused, may be out of date
@@ -692,7 +698,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
         ax.plot( [xLines.min(),xLines.max()], [yLines[i],yLines[i]], '-', \
                  c=cgrid, zorder=1 )
     ax, SMstr, plList = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                            xLines, yLines, survey=survey )
+                                   xLines, yLines, survey=survey )
 
     formatAxisTicks( ax )
     ax.xaxis.set_ticks( xLines, minor=False )
@@ -776,18 +782,20 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                 SMj, SMstr = survey['thresholdESM']( RpREj, framework=framework )
 
             ixsj = ( RpRE>=Rgrid[j] )*( RpRE<Rgrid[j+1] ) # Show if within the radius range
-            ixsij = ixs0[ixsi*ixsj*( SM[1]>SMj )] # Show if in the cell and SM higher than threshold
+            # Show if in the cell and SM higher than threshold:
+            ixsij = ixs0[ixsi*ixsj*( SM[1]>SMj )] 
             nij = len( ixsij ) # Number in cell higher than threshold
             if nij>0:
                 # Order by decreasing SM:
                 ixso = np.argsort( SM[1][ixsij] ) 
                 ixs = ixsij[ixso][::-1] 
                 
-                nwrite = min( [ nij, nList ] ) # Number is number above threshold in cell or 5
+                nwrite = min( [ nij, nList ] ) # number above threshold in cell or 5
                 dy = ( yLines[j+1]-yLines[j] )/float(nList+0.5)
                 y0 = yLines[j]+4.8*dy
 
-                predSM = getFifthPredicted(SM[0], Rgrid[j+1], Rgrid[j], Tgrid[i+1], Tgrid[i])
+                predSM = getFifthPredicted( SM[0], Rgrid[j+1], Rgrid[j], \
+                                            Tgrid[i+1], Tgrid[i] )
                     
                 for k in range( nwrite ): #For each planet (max 5)
                     ytxt = y0-k*dy
@@ -796,8 +804,8 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                 
                     if SM[1][ixs][k] >= predSM:
                         plStr += '*'
-
-                    if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ): # Silver if APC or CP
+                    # Silver if APC or CP
+                    if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ): 
                         c = 'Silver'
                         wt = 'normal'
                     else: # Black if PC
@@ -1451,42 +1459,66 @@ def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0
     return  highestSMs[0]
             
 
-def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
-    
+def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True ):
+    Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )    
     ifile = open( 'toiProperties.pkl', 'rb' )
     z0 = pickle.load( ifile )
     ifile.close()
     z = z0['allVals']
-
     values = ['planetName', 'TICID', 'RA_deg', 'Dec_deg', \
-              'Vmag', 'Jmag', 'Hmag', 'Kmag',\
-              SMFlag, 'Kamp', 'Pday', 'TstarK', 'MsMS', 'MpValME', 'RpValRE' ]
+              'Vmag', 'Imag', 'Jmag', 'Hmag', 'Kmag',\
+              SMFlag, 'Kamp', 'Pday', 'TstarK', 'MsMS', \
+              'MpValME', 'RpValRE' ]
     indices = []   
     keys = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs )[2]
-
-    for key in keys:
+    n = len( keys )
+    topRanked = np.zeros( n )
+    for i in range( n ):
+        key = keys[i]
         index = list( z['planetName'] ).index( key[0:key.index( ')' )+1] )
         indices.append( index )
-        
+        if key[-1]=='*':
+            topRanked[i] = 1
     ASCII = {}
     for value in values:
         ASCII[value] = []
         for j in indices:
             ASCII[value].append( z[value][j] )
-            
+    n = len( ASCII['planetName'] )
+    print( n )
+    pdb.set_trace()
     # Sort by declination coordinate:
     ixs = np.argsort( ASCII['Dec_deg'] )
     for value in values:
         ASCII[value] = np.array( ASCII[value] )[ixs]
+    loggstarCGS = z['loggstarCGS'][ixs]
+    TeqK = z['TeqK'][ixs]
+    RpRE = z['RpValRE'][ixs]
+    SMVals = z[SMFlag][ixs]
 
+    # Correct missing Imags (probably most of them):
+    if pysynphotImport==True:
+        ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
+        m = len( ixs )
+        print( '\nEstimating {0:.0f} Imags...'.format( m ) )
+        for i in range( m ):
+            Jmag = ASCII['Jmag'][ixs[i]]
+            TstarK = ASCII['TstarK'][ixs[i]]
+            loggCGS = loggstarCGS[ixs[i]]
+            if np.isfinite( Jmag )*( TstarK<31000 )*np.isfinite( loggCGS ):
+                Imag = Utils.convertMag( Jmag, TstarK, loggCGS, \
+                                         inputMag='J', outputMag='I' )
+                ASCII['Imag'][ixs[i]] = Imag
+        
     col0 = 'Target'.rjust( 18 )
     col1 = 'TICID'.rjust( 15 )
     col2 = 'RA(deg)'.rjust( 9 )
     col3 = 'Dec(deg)'.rjust( 10 )
     col4a = 'Vmag'.rjust( 7 )
-    col4b = 'Jmag'.rjust( 7 )
-    col4c = 'Hmag'.rjust( 7 )
-    col4d = 'Kmag'.rjust( 7 )
+    col4b = 'Imag'.rjust( 7 )
+    col4c = 'Jmag'.rjust( 7 )
+    col4d = 'Hmag'.rjust( 7 )
+    col4e = 'Kmag'.rjust( 7 )
     col5 = SMFlag.rjust( 10 )
     col6 = 'K(m/s)'.rjust( 8 )
     col7 = 'P(d)'.rjust( 10 )
@@ -1494,30 +1526,38 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs = False ):
     col9 = 'Ms(MS)'.rjust( 10 )
     col10 = 'Mp(ME)'.rjust( 10 )
     col11 = 'Rp(RE)'.rjust( 10 )
-    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}\n'\
+    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}\n'\
            .format( col0, col1, col2, col3, \
-                    col4a, col4b, col4c, col4d, \
+                    col4a, col4b, col4c, col4d, col4e, \
                     col5, col6, col7, col8, col9, col10, col11 )
     
-    ncol = [ 18, 15, 9, 10, 7, 7, 7, 7, 10, 8, 10, 10, 10, 10, 10 ] # column width
-    ndps = [  0,  0, 2,  2, 1, 1, 1, 1,  1, 1,  3,  0,  1,  1,  1 ] # decimal places
-    ostr += '#{0}'.format( 150*'-' )
-    n = len( ASCII['planetName'] )
+    ncol = [ 18, 15, 9, 10, 7, 7, 7, 7, 7, 10, 8, 10, 10, 10, 10, 10 ] # column width
+    ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1,  1, 1,  3,  0,  1,  1,  1 ] # decimal places
+    ostr += '#{0}'.format( 160*'-' )
     m = len( values )
-    for i in range( n ): # loop over each TOI
-        ostr += '\n  '
+    def rowStr( i ):
+        ostr = '\n  '
         for j in range( m ): # loop over each property
             k = values[j]
             if ( k!='planetName' )*( k!='TICID' ): # numbers
                 ostr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
             else: # strings
                 ostr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
+        return ostr
 
+    for i in range( n ): # loop over each TOI
+        if topFivePredicted:
+            if ( topRanked[i]==1 ):            
+                ostr += rowStr( i )
+        else:
+            ostr += rowStr( i )
+            
     # Write to file:
     oname = f'RVvaluesBy{SMFlag}.txt'
     if onlyPCs == True:
         oname = f'RVValuesBy{SMFlag}_onlyPCs.txt'
-
+    if topFivePredicted==True:
+        oname = oname.replace( '.txt', '_topPredicted.txt' )
     opath = os.path.join( os.getcwd(), oname )
 
     ofile = open( opath, 'w' )

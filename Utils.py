@@ -1,7 +1,11 @@
 import pdb, sys, os, time, requests, json
 import numpy as np
 import matplotlib.pyplot as plt
-import pysynphot
+try:
+    import pysynphot
+    pysynphotImport = True
+except:
+    pysynphotImport = False
 import math
 from urllib.parse import quote as urlencode
 
@@ -25,6 +29,10 @@ GRAV_SI = 6.67428e-11 # gravitational constant in m^3 kg^-1 s^-2
 def photBands():
     idir = os.path.dirname( __file__ )
     tessPath = os.path.join( idir, 'tess-response-function-v2.0.csv' )
+    Vband = np.loadtxt( os.path.join( idir, 'Bessel_V.dat' ) )
+    Vband[:,0] /= 1000. # convert from nm to micron.
+    Iband = np.loadtxt( os.path.join( idir, 'Bessel_I.dat' ) )
+    Iband[:,0] /= 1000. # convert from nm to micron.    
     Tband = np.loadtxt( tessPath, delimiter=',' )
     Tband[:,0] /= 1000. # convert from nm to micron.
     Jband = np.loadtxt( os.path.join( idir, '2MASS_J.dat' ) )
@@ -33,7 +41,7 @@ def photBands():
     Hband[:,0] /= 1000. # convert from nm to micron.
     Kband = np.loadtxt( os.path.join( idir, '2MASS_Ks.dat' ) )
     Kband[:,0] /= 1000. # convert from nm to micron.
-    return Tband, Jband, Hband, Kband
+    return Vband, Iband, Tband, Jband, Hband, Kband
 
 
 def modelStellarSpectrum( TeffK, loggCGS, FeH=0 ):
@@ -113,7 +121,7 @@ def JHKVmags( TICIDs ):
     return magsDict
 
 
-def convertTmag( Tmag, TeffK, loggCGS, outputMag='J', vega=None, star=None ):
+def convertMag( inMag, TeffK, loggCGS, inputMag='T', outputMag='J', vega=None, star=None ):
     """
     Routine to convert Tmag to JHK mag.
 
@@ -136,8 +144,18 @@ def convertTmag( Tmag, TeffK, loggCGS, outputMag='J', vega=None, star=None ):
         star = modelStellarSpectrum( TeffK, loggCGS, FeH=0 )
     t3 = time.time()
     # Read in the photometric passbands:
-    T, J, H, Ks = photBands()
-    if outputMag=='J':
+    V, I, T, J, H, Ks = photBands()
+    if inputMag=='V':
+        inM = V
+    elif inputMag=='T':
+        inM = T
+    elif inputMag=='J':
+        inM = J
+    if outputMag=='V':
+        M = V
+    elif outputMag=='I':
+        M = I
+    elif outputMag=='J':
         M = J
     elif outputMag=='H':
         M = H
@@ -147,28 +165,19 @@ def convertTmag( Tmag, TeffK, loggCGS, outputMag='J', vega=None, star=None ):
     # Interpolate the Vega spectrum onto the photometric passbands
     # and then sum to get the relative fluxes in each passband:
     t4 = time.time()
-    Fvega_T = np.sum( T[:,1]*np.interp( T[:,0], vega[0], vega[1] ) )
+    Fvega_I = np.sum( inM[:,1]*np.interp( inM[:,0], vega[0], vega[1] ) )
     Fvega_M = np.sum( M[:,1]*np.interp( M[:,0], vega[0], vega[1] ) )
     
     # Do the same for the star of interest:
     t5 = time.time()
-    Fstar_T = np.sum( T[:,1]*np.interp( T[:,0], star[0], star[1] ) )
+    Fstar_I = np.sum( inM[:,1]*np.interp( inM[:,0], star[0], star[1] ) )
     Fstar_M = np.sum( M[:,1]*np.interp( M[:,0], star[0], star[1] ) )
 
     t6 = time.time()
     # Use the relative brightnesses to convert from Tmag to the output magnitude:
-    Mmag = Tmag + 2.5*np.log10( ( Fvega_M/Fvega_T )*( Fstar_T/Fstar_M ) )
+    outMag = inMag + 2.5*np.log10( ( Fvega_M/Fvega_I )*( Fstar_I/Fstar_M ) )
     t7 = time.time()
-
-    if 0:
-        print( t2-t1 )
-        print( t3-t2 )
-        print( t4-t3 )
-        print( t5-t4 )
-        print( t6-t5 )
-        print( t7-t6 )
-        print( t7-t1 )
-    return Mmag
+    return outMag
 
 
 def spectrumVega( makePlot=False ):
