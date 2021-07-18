@@ -381,7 +381,6 @@ def computeTSM( RpValRE, MpValME, RsRS, TeqK, Jmag ):
 
 
 def computeESM( TeqK, RpRs, TstarK, Kmag ):
-    nAll = len( TeqK )
     wavRefSI = 7.5e-6
     TdayK = 1.10*TeqK # from Section 3.2 of Kempton+2018
     Bday =  PlanckFuncSI( wavRefSI, TdayK )

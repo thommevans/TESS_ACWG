@@ -655,7 +655,7 @@ def readRawTOIsNExScI( fpath ):
 def checkTOIsTESSCP (zIN):
 
     TOI_TICID = zIN['TICID']
-
+    
     CP_TICIDpath = downloadTargetLists.targetsConfirmedTESS()
     ADIR = os.getcwd()
     ipath = os.path.join( ADIR, CP_TICIDpath )
@@ -667,7 +667,7 @@ def checkTOIsTESSCP (zIN):
     t = np.genfromtxt( ipath, dtype=str, delimiter=',', invalid_raise=False )
 
     CP_TICID = t[1:]
-
+    CP_TICID = [CP[4::] for CP in CP_TICID]
     ixs = []
     for i in range(len(TOI_TICID)):
         inCP = False
@@ -682,5 +682,6 @@ def checkTOIsTESSCP (zIN):
     for key in zIN:
         inList = zIN[key]
         zOut[key] = np.array([inList[n] for n in range(len(inList)) if n in ixs])
-    
+    print('Reading {0}/{1} TOIs not listed as a TESS Confirmed Planet'.format(len(zOut['TICID']), len(TOI_TICID)))
+
     return zOut     
