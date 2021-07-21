@@ -624,9 +624,9 @@ def readRawTOIsNExScI( fpath, forceDownload=False ):
     """
     """
     if not forceDownload:
-        fpath = f'{os.getcwd()}/toiProperties.pkl'
-        if os.path.exists(fpath):
-            pklAge = os.path.getmtime(fpath)
+        ipath = f'{os.getcwd()}/toiProperties.pkl'
+        if os.path.exists(ipath):
+            pklAge = os.path.getmtime(ipath)
             if (time.time() - pklAge)/3600 < 24:
                 z = pickle.load(open('toiProperties.pkl', 'rb'))
                 return z
