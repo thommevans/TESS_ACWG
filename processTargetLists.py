@@ -33,6 +33,10 @@ def Confirmed( csvIpath='', pklOdir='' ):
     oname = 'confirmedProperties.pkl'
     odir = os.getcwd()
     opath = os.path.join( odir, oname )
+    if os.path.exists(opath):
+        pklAge = os.path.getmtime(opath)
+        if (time.time() - pklAge)/3600 < 24:
+            return opath
     ofile = open( opath, 'wb' )
     pickle.dump( zOut, ofile )
     ofile.close()
@@ -45,6 +49,10 @@ def TOIs( csvIpath='', pklOdir='' ):
     zOut = { 'missingProperties':zMissing, 'allVals':zAll, 'dateStr':dateStr }
     oname = 'toiProperties.pkl'
     opath = os.path.join( pklOdir, oname )
+    if os.path.exists(opath):
+        pklAge = os.path.getmtime(opath)
+        if (time.time() - pklAge)/3600 < 24:
+            return opath
     ofile = open( opath, 'wb' )
     pickle.dump( zOut, ofile )
     ofile.close()
