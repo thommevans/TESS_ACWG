@@ -1,4 +1,4 @@
-import requests
+import requests, os
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -11,6 +11,9 @@ def targetsWithPublishedConfirmation():
     date = str(datetime.date(datetime.now()))
     path = 'PS_'+date+'.csv'
     confirmedFpath = path
+
+    if os.path.exists(f'{os.getcwd()}/{path}'):
+        return confirmedFpath
     
     default_query = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+ps+where+tran_flag+=+1&format=csv"
     
@@ -55,6 +58,9 @@ def targetsConfirmedTESS():
     path = 'PS_TESS_'+date+'.csv'
     confirmedFpath = path
     
+    if os.path.exists(f'{os.getcwd()}/{path}'):
+        return confirmedFpath
+    
     default_query = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+ps+where+disc_facility+=+%27Transiting%20Exoplanet%20Survey%20Satellite%20(TESS)%27&format=csv"
     
     add_few_elements = ','.join(['tic_id'])
@@ -83,6 +89,8 @@ def targetsUnpublishedTOIs():
     date = str(datetime.date(datetime.now()))
     path = 'TOI_'+date+'.csv'
     toiFpath = path
+    if os.path.exists(f'{os.getcwd()}/{path}'):
+        return toiFpath
     
     default_query = "https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?table=TOI&format=csv"
     
@@ -106,4 +114,3 @@ def targetsUnpublishedTOIs():
     planets_df.to_csv(toiFpath, index=False)
     
     return toiFpath
-

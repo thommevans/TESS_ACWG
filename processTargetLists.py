@@ -1,8 +1,9 @@
-import pdb, sys, os
+import pdb, sys, os, time
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from . import Utils, downloadTargetLists
+
 
 
 """
@@ -191,6 +192,12 @@ def getDateStr( fpath, whichList='Confirmed' ):
 def readConfirmedNExScI( fpath ):
     dateStr = getDateStr( fpath, whichList='Confirmed' )
     zRaw = readRawConfirmedNExScI( fpath )
+    
+    if 'allVals' in zRaw:
+        z = pickle.load(open('confirmedProperties.pkl', 'rb'))
+        zMissing, zAll, dateStr = [i for i in z.values()]
+        return zAll, zMissing, dateStr
+    
     zAll, zMissing = processRaw( zRaw )
     zAll = addMissingInsol( zAll )
     zAll = addUnits( zAll )
@@ -206,6 +213,12 @@ def readTOIsNExScI( fpath ):
     dateStr = getDateStr( fpath, whichList='TOIs' )
     zRaw = readRawTOIsNExScI( fpath )
     zAll = zRaw
+    
+    if 'allVals' in zAll:
+        z = pickle.load(open('toiProperties.pkl', 'rb'))
+        zMissing, zAll, dateStr = [i for i in z.values()]
+        return zAll, zMissing, dateStr
+    
     zAll['MpValME'] = Utils.planetMassFromRadius( zAll['RpValRE'], \
                                                   whichRelation='Chen&Kipping2017' )
     
@@ -519,6 +532,12 @@ def readRawConfirmedNExScI( csvIpath ):
     5. Download table as CSV. Make sure 'Values only' is *not* checked.
     """
     
+    fpath = f'{os.getcwd()}/confirmedProperties.pkl'
+    if os.path.exists(fpath):
+        pklAge = os.path.getmtime(fpath)
+        if (time.time() - pklAge)/3600 < 24:
+            z = pickle.load(open('confirmedProperties.pkl', 'rb'))
+            return z
     
     print( '\nReading NExScI table of confirmed planets:\n{0}'.format( csvIpath ) )
     t = np.genfromtxt( csvIpath, dtype=str, delimiter=',', invalid_raise=False )
@@ -591,7 +610,13 @@ def readRawConfirmedNExScI( csvIpath ):
 
 def readRawTOIsNExScI( fpath ):
     """
-    """    
+    """
+    fpath = f'{os.getcwd()}/toiProperties.pkl'
+    if os.path.exists(fpath):
+        pklAge = os.path.getmtime(fpath)
+        if (time.time() - pklAge)/3600 < 24:
+            z = pickle.load(open('toiProperties.pkl', 'rb'))
+            return z
     
     print( '\nReading NExScI table of TOIs:\n{0}'.format( fpath ) )
     t = np.genfromtxt( fpath, dtype=str, delimiter=',', invalid_raise=False )
@@ -649,14 +674,14 @@ def readRawTOIsNExScI( fpath ):
     z['RpUppErrRJ'] = z['RpUppErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpLowErrRJ'] = z['RpLowErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpRs'] = ( z['RpValRE']*Utils.REARTH_SI )/( z['RsRS']*Utils.RSUN_SI )
-    # print(f"Dec_deg: {list(z['Dec_deg'])}")
+
     return z
 
 def checkTOIsTESSCP (zIN):
-
+               
     TOI_TICID = zIN['TICID']
     
-    CP_TICIDpath = downloadTargetLists.targetsConfirmedTESS()
+    CP_TICIDpath = downloadTargetLists.targetsConfirmedTESS() 
     ADIR = os.getcwd()
     ipath = os.path.join( ADIR, CP_TICIDpath )
     print(ipath)
