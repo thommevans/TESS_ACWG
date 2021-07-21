@@ -7,13 +7,12 @@ ADIR = os.getcwd()
 ########################################################################
 # Step 1: Download the target list from NASA Exoplanet Archive.
 
-toiFpath = downloadTargetLists.targetsUnpublishedTOIs()
+toiFpath = downloadTargetLists.targetsUnpublishedTOIs( forceDownload=False )
 
 ########################################################################
 # Step 2: Process the csv file downloaded from NASA Exoplanet Archive.
 
-toiPickle = processTargetLists.TOIs( csvIpath=toiFpath, pklOdir=ADIR )
-
+toiPickle = processTargetLists.TOIs( csvIpath=toiFpath, pklOdir=ADIR, forceDownload=False )
     
 ########################################################################
 # Step 3: Make the figures using the processed pickle file as input.

@@ -8,14 +8,15 @@ ADIR = os.getcwd()
 ########################################################################
 # Step 1: Download the target list from NASA Exoplanet Archive.
 
-csvFpath = downloadTargetLists.targetsWithPublishedConfirmation()
+csvFpath = downloadTargetLists.targetsWithPublishedConfirmation( forceDownload=True )
 CSV_FNAME = csvFpath
 CSV_FPATH = os.path.join( ADIR, CSV_FNAME )
 
 ########################################################################
 # Step 2: Process the csv file downloaded from NASA Exoplanet Archive.
 if 1:
-    confirmedPickle = processTargetLists.Confirmed( csvIpath=csvFpath, pklOdir=ADIR )
+    confirmedPickle = processTargetLists.Confirmed( csvIpath=csvFpath, pklOdir=ADIR, \
+                                                   forceDownload=True )
 else:
     confirmedPickle = 'confirmedProperties.pkl'
     

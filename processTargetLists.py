@@ -27,32 +27,34 @@ IPATH_BARCLAY2018_V1 = 'detected_planets.csv'
 
 TEFFK_SUN = 5800
 
-def Confirmed( csvIpath='', pklOdir='' ):
-    zAll, zMissing, dateStr = readConfirmedNExScI( csvIpath )
+def Confirmed( csvIpath='', pklOdir='', forceDownload=False ):
+    zAll, zMissing, dateStr = readConfirmedNExScI( csvIpath, forceDownload=forceDownload )
     zOut = { 'missingProperties':zMissing, 'allVals':zAll, 'dateStr':dateStr }
     oname = 'confirmedProperties.pkl'
     odir = os.getcwd()
     opath = os.path.join( odir, oname )
-    if os.path.exists(opath):
-        pklAge = os.path.getmtime(opath)
-        if (time.time() - pklAge)/3600 < 24:
-            return opath
+    if not forceDownload:
+        if os.path.exists(opath):
+            pklAge = os.path.getmtime(opath)
+            if (time.time() - pklAge)/3600 < 24:
+                return opath
     ofile = open( opath, 'wb' )
     pickle.dump( zOut, ofile )
     ofile.close()
     print( '\nSaved:\n{0}\n'.format( opath ) )
     return opath
 
-def TOIs( csvIpath='', pklOdir='' ):
-    z, zMissing, dateStr = readTOIsNExScI( csvIpath )
-    zAll = checkTOIsTESSCP(z)
+def TOIs( csvIpath='', pklOdir='', forceDownload=False ):
+    z, zMissing, dateStr = readTOIsNExScI( csvIpath, forceDownload=forceDownload )
+    zAll = checkTOIsTESSCP( z, forceDownload = forceDownload )
     zOut = { 'missingProperties':zMissing, 'allVals':zAll, 'dateStr':dateStr }
     oname = 'toiProperties.pkl'
     opath = os.path.join( pklOdir, oname )
-    if os.path.exists(opath):
-        pklAge = os.path.getmtime(opath)
-        if (time.time() - pklAge)/3600 < 24:
-            return opath
+    if not forceDownload:
+        if os.path.exists(opath):
+            pklAge = os.path.getmtime(opath)
+            if (time.time() - pklAge)/3600 < 24:
+                return opath
     ofile = open( opath, 'wb' )
     pickle.dump( zOut, ofile )
     ofile.close()
@@ -197,14 +199,15 @@ def getDateStr( fpath, whichList='Confirmed' ):
     dateStr = fname[ix0:ix1].replace( '.', '/' )
     return dateStr
 
-def readConfirmedNExScI( fpath ):
+def readConfirmedNExScI( fpath, forceDownload=False ):
     dateStr = getDateStr( fpath, whichList='Confirmed' )
-    zRaw = readRawConfirmedNExScI( fpath )
+    zRaw = readRawConfirmedNExScI( fpath, forceDownload=forceDownload )
     
-    if 'allVals' in zRaw:
-        z = pickle.load(open('confirmedProperties.pkl', 'rb'))
-        zMissing, zAll, dateStr = [i for i in z.values()]
-        return zAll, zMissing, dateStr
+    if not forceDownload:
+        if 'allVals' in zRaw:
+            z = pickle.load(open('confirmedProperties.pkl', 'rb'))
+            zMissing, zAll, dateStr = [i for i in z.values()]
+            return zAll, zMissing, dateStr
     
     zAll, zMissing = processRaw( zRaw )
     zAll = addMissingInsol( zAll )
@@ -217,15 +220,16 @@ def readConfirmedNExScI( fpath ):
                                     zAll['TstarK'], zAll['Kmag'] )
     return zAll, zMissing, dateStr
 
-def readTOIsNExScI( fpath ):
+def readTOIsNExScI( fpath, forceDownload=False ):
     dateStr = getDateStr( fpath, whichList='TOIs' )
-    zRaw = readRawTOIsNExScI( fpath )
+    zRaw = readRawTOIsNExScI( fpath, forceDownload=forceDownload )
     zAll = zRaw
     
-    if 'allVals' in zAll:
-        z = pickle.load(open('toiProperties.pkl', 'rb'))
-        zMissing, zAll, dateStr = [i for i in z.values()]
-        return zAll, zMissing, dateStr
+    if not forceDownload:
+        if 'allVals' in zAll:
+            z = pickle.load(open('toiProperties.pkl', 'rb'))
+            zMissing, zAll, dateStr = [i for i in z.values()]
+            return zAll, zMissing, dateStr
     
     zAll['MpValME'] = Utils.planetMassFromRadius( zAll['RpValRE'], \
                                                   whichRelation='Chen&Kipping2017' )
@@ -500,7 +504,7 @@ def fixValuesWithUncertaintiesORIGINAL( zOut, zPlanet, k, ixOthers ):
     return zOut
     
         
-def readRawConfirmedNExScI( csvIpath ):
+def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
     """
     Instructions for downloading table from NASA Exoplanet Archive:
     1. Remove condition 'Default parameter set = 1'.
@@ -539,13 +543,13 @@ def readRawConfirmedNExScI( csvIpath ):
     4. Set condition 'Detected by transits = 1'.
     5. Download table as CSV. Make sure 'Values only' is *not* checked.
     """
-    
-    fpath = f'{os.getcwd()}/confirmedProperties.pkl'
-    if os.path.exists(fpath):
-        pklAge = os.path.getmtime(fpath)
-        if (time.time() - pklAge)/3600 < 24:
-            z = pickle.load(open('confirmedProperties.pkl', 'rb'))
-            return z
+    if not forceDownload:
+        fpath = f'{os.getcwd()}/confirmedProperties.pkl'
+        if os.path.exists(fpath):
+            pklAge = os.path.getmtime(fpath)
+            if (time.time() - pklAge)/3600 < 24:
+                z = pickle.load(open('confirmedProperties.pkl', 'rb'))
+                return z
     
     print( '\nReading NExScI table of confirmed planets:\n{0}'.format( csvIpath ) )
     t = np.genfromtxt( csvIpath, dtype=str, delimiter=',', invalid_raise=False )
@@ -616,15 +620,16 @@ def readRawConfirmedNExScI( csvIpath ):
     return z
 
 
-def readRawTOIsNExScI( fpath ):
+def readRawTOIsNExScI( fpath, forceDownload=False ):
     """
     """
-    fpath = f'{os.getcwd()}/toiProperties.pkl'
-    if os.path.exists(fpath):
-        pklAge = os.path.getmtime(fpath)
-        if (time.time() - pklAge)/3600 < 24:
-            z = pickle.load(open('toiProperties.pkl', 'rb'))
-            return z
+    if not forceDownload:
+        fpath = f'{os.getcwd()}/toiProperties.pkl'
+        if os.path.exists(fpath):
+            pklAge = os.path.getmtime(fpath)
+            if (time.time() - pklAge)/3600 < 24:
+                z = pickle.load(open('toiProperties.pkl', 'rb'))
+                return z
     
     print( '\nReading NExScI table of TOIs:\n{0}'.format( fpath ) )
     t = np.genfromtxt( fpath, dtype=str, delimiter=',', invalid_raise=False )
@@ -685,11 +690,11 @@ def readRawTOIsNExScI( fpath ):
 
     return z
 
-def checkTOIsTESSCP (zIN):
+def checkTOIsTESSCP ( zIN, forceDownload ):
                
     TOI_TICID = zIN['TICID']
     
-    CP_TICIDpath = downloadTargetLists.targetsConfirmedTESS() 
+    CP_TICIDpath = downloadTargetLists.targetsConfirmedTESS( forceDownload = forceDownload ) 
     ADIR = os.getcwd()
     ipath = os.path.join( ADIR, CP_TICIDpath )
     print(ipath)

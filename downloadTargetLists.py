@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-def targetsWithPublishedConfirmation():
+def targetsWithPublishedConfirmation( forceDownload=False ):
     """
     Confirmed Planets from NASA Exoplanet Archive.    
 
@@ -11,9 +11,9 @@ def targetsWithPublishedConfirmation():
     date = str(datetime.date(datetime.now()))
     path = 'PS_'+date+'.csv'
     confirmedFpath = path
-
-    if os.path.exists(f'{os.getcwd()}/{path}'):
-        return confirmedFpath
+    if not forceDownload:
+        if os.path.exists(f'{os.getcwd()}/{path}'):
+            return confirmedFpath
     
     default_query = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+ps+where+tran_flag+=+1&format=csv"
     
@@ -48,7 +48,7 @@ def targetsWithPublishedConfirmation():
 
     return confirmedFpath
 
-def targetsConfirmedTESS():
+def targetsConfirmedTESS( forceDownload=False ):
     """
     Planets confirmed by TESS from NASA Planet Archive.
     
@@ -57,9 +57,9 @@ def targetsConfirmedTESS():
     date = str(datetime.date(datetime.now()))
     path = 'PS_TESS_'+date+'.csv'
     confirmedFpath = path
-    
-    if os.path.exists(f'{os.getcwd()}/{path}'):
-        return confirmedFpath
+    if not forceDownload:
+        if os.path.exists(f'{os.getcwd()}/{path}'):
+            return confirmedFpath
     
     default_query = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+ps+where+disc_facility+=+%27Transiting%20Exoplanet%20Survey%20Satellite%20(TESS)%27&format=csv"
     
@@ -81,7 +81,7 @@ def targetsConfirmedTESS():
 
     return confirmedFpath
 
-def targetsUnpublishedTOIs():
+def targetsUnpublishedTOIs( forceDownload=False ):
     """
     TESS Project Candidates from NASA Exoplanet Archive.
     
@@ -89,8 +89,9 @@ def targetsUnpublishedTOIs():
     date = str(datetime.date(datetime.now()))
     path = 'TOI_'+date+'.csv'
     toiFpath = path
-    if os.path.exists(f'{os.getcwd()}/{path}'):
-        return toiFpath
+    if not forceDownload:
+        if os.path.exists(f'{os.getcwd()}/{path}'):
+            return toiFpath
     
     default_query = "https://exoplanetarchive.ipac.caltech.edu/cgi-bin/nstedAPI/nph-nstedAPI?table=TOI&format=csv"
     
