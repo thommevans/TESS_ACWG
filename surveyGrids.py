@@ -202,9 +202,13 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     figs = { '2':fig2 }
     print( '\nSaved:' )
     if wideFormat==True:
-        odirExt = 'survey{0}/wideFormat'.format( survey['surveyName'] )
+        odirExt = 'survey{0}/wideFormat/TOIs/{1}'.format( survey['surveyName'], \
+                                                         SMFlag)
+        if onlyPCs:
+            odirExt = odirExt+'/onlyPCs'
     else:
-        odirExt = 'survey{0}/narrowFormat'.format( survey['surveyName'] )
+        odirExt = 'survey{0}/narrowFormat/TOIs/{1}'.format( survey['surveyName'], \
+                                                           SMFlag)
     odir = os.path.join( FIGDIR, odirExt )
     if os.path.isdir( odir )==False:
         os.makedirs( odir )
@@ -376,9 +380,11 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     figs = { '1a':fig1a, '1b':fig1b, '2':fig2, '3a':fig3a, '3b':fig3b }
     print( '\nSaved:' )
     if wideFormat==True:
-        odirExt = 'survey{0}/wideFormat'.format( survey['surveyName'] )
+        odirExt = 'survey{0}/wideFormat/Confirmed/{1}'.format( survey['surveyName'], \
+                                                              SMFlag )
     else:
-        odirExt = 'survey{0}/narrowFormat'.format( survey['surveyName'] )
+        odirExt = 'survey{0}/narrowFormat/Confirmed/{1}'.format( survey['surveyName'], \
+                                                            SMFlag )
     odir = os.path.join( FIGDIR, odirExt )
     if os.path.isdir( odir )==False:
         os.makedirs( odir )
@@ -519,9 +525,9 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
                                   showNeptuneRadius=showNeptuneRadius, \
                                   showJupiterRadius=showJupiterRadius, survey=survey )
     if wideFormat==True:
-        odirExt = 'survey{0}/wideFormat'.format( surveyModule )
+        odirExt = 'survey{0}/wideFormat/{1}'.format( surveyModule, SMFlag )
     else:
-        odirExt = 'survey{0}/narrowFormat'.format( surveyModule )
+        odirExt = 'survey{0}/narrowFormat/{1}'.format( surveyModule, SMFlag )
     odir = os.path.join( FIGDIR, odirExt )
     if os.path.isdir( odir )==False:
         os.makedirs( odir )
@@ -1553,9 +1559,10 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
             ostr += rowStr( i )
             
     # Write to file:
-    oname = f'RVvaluesBy{SMFlag}.txt'
+    oname = f'ASCII/RVvaluesBy{SMFlag}.txt'
+
     if onlyPCs == True:
-        oname = f'RVValuesBy{SMFlag}_onlyPCs.txt'
+        oname = oname.replace( '.txt', '_onlyPCs.txt' )
     if topFivePredicted==True:
         oname = oname.replace( '.txt', '_topPredicted.txt' )
     opath = os.path.join( os.getcwd(), oname )

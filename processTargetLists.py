@@ -697,7 +697,7 @@ def checkTOIsTESSCP ( zIN, forceDownload ):
     CP_TICIDpath = downloadTargetLists.targetsConfirmedTESS( forceDownload = forceDownload ) 
     ADIR = os.getcwd()
     ipath = os.path.join( ADIR, CP_TICIDpath )
-    print(ipath)
+    print('\nSaved:\n{0}\n'.format( ipath ))
 
     if not os.path.isfile(ipath):
         raise Exception("TESS CP TICID file not found")
