@@ -34,9 +34,13 @@ def Confirmed( csvIpath='', pklOdir='', forceDownload=False ):
     odir = os.getcwd()
     opath = os.path.join( odir, oname )
     if not forceDownload:
-        if os.path.exists(opath):
+        if os.path.exists( opath ):
             pklAge = os.path.getmtime(opath)
             if (time.time() - pklAge)/3600 < 24:
+                ostr = '\n{0}\nFile exists and has been updated within last 24hrs'\
+                       .format( opath )
+                ostr += ' (Set forceDownload=True to force update)\n'
+                print( ostr )
                 return opath
     ofile = open( opath, 'wb' )
     pickle.dump( zOut, ofile )
@@ -54,6 +58,10 @@ def TOIs( csvIpath='', pklOdir='', forceDownload=False ):
         if os.path.exists(opath):
             pklAge = os.path.getmtime(opath)
             if (time.time() - pklAge)/3600 < 24:
+                ostr = '\n{0}\nFile exists and has been updated within last 24hrs'\
+                       .format( opath )
+                ostr += ' (Set forceDownload=True to force update)\n'
+                print( ostr )
                 return opath
     ofile = open( opath, 'wb' )
     pickle.dump( zOut, ofile )
