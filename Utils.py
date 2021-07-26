@@ -584,4 +584,16 @@ def computeRVSemiAmp( Pday, MpME, MsMS ):
         (1 / (1 - e**2)**(1/2))
     return K
 
+def TeqK_Kempton (Pday, MsMS, TstarK, RsRS):
+    """
+    Computes TeqK values based on Kempton assuming a circular orbit.
+    """
+    Psec = Pday*24*3600
+    MsSI = MsMS * MSUN_SI
+    RsSI = RsRS * RSUN_SI
 
+    a = (GRAV_SI * MsSI * Psec**2/(4*np.pi**2))**(1/3)
+
+    TeqK = TstarK * (RsSI/a)**(1/2) * (1/4)**(1/4)
+
+    return TeqK

@@ -240,14 +240,18 @@ def readTOIsNExScI( fpath, forceDownload=False ):
     zAll['Vmag'] = Utils.JHKVmags(zAll['TICID'])['Vmag']
     zAll['Imag'] = Utils.JHKVmags(zAll['TICID'])['Imag']
 
+    zAll['MsMS'] = Utils.computeStellarMass( zAll['RsRS'], zAll['loggstarCGS'])
+
+    zAll['TeqK'] = Utils.TeqK_Kempton( zAll['Pday'], zAll['MsMS'], zAll['TstarK'], zAll['RsRS'])
+    #TeqK computed as in Kempton. Pulled TeqK values stored in TeqK_exofop
+
     zAll['TSM'] = Utils.computeTSM( zAll['RpValRE'], zAll['MpValME'], \
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
                                     zAll['TstarK'], zAll['Kmag'] )
-    zAll['MsMS'] = Utils.computeStellarMass( zAll['RsRS'], zAll['loggstarCGS'])
     
     zAll['Kamp'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
-
+    
     zMissing = {}
     for k in ['TSM','ESM']:
         zMissing[k] = zAll['planetName'][np.isfinite( zAll[k] )==False]
@@ -647,7 +651,7 @@ def readRawTOIsNExScI( fpath, forceDownload=False ):
     z['Dec'] = np.array( t[1:,cols=='decstr'].flatten(), dtype='<U20' )
     z['Insol'] = t[1:,cols=='pl_insol'].flatten()
     z['Pday'] = t[1:,cols=='pl_orbper'].flatten()
-    z['TeqK'] = t[1:,cols=='pl_eqt'].flatten()
+    z['TeqK_exofop'] = t[1:,cols=='pl_eqt'].flatten() #TeqK taken from Exoplanet Archive rather than calculated as in Kempton et al.
     z['RpValRE'] = t[1:,cols=='pl_rade'].flatten()
     z['RpUppErrRE'] = t[1:,cols=='pl_radeerr1'].flatten()
     z['RpLowErrRE'] = t[1:,cols=='pl_radeerr2'].flatten()
