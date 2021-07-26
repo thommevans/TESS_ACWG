@@ -1559,13 +1559,16 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
             ostr += rowStr( i )
             
     # Write to file:
-    oname = f'ASCII/RVvaluesBy{SMFlag}.txt'
+    oname = f'RVvaluesBy{SMFlag}.txt'
 
     if onlyPCs == True:
         oname = oname.replace( '.txt', '_onlyPCs.txt' )
     if topFivePredicted==True:
         oname = oname.replace( '.txt', '_topPredicted.txt' )
-    opath = os.path.join( os.getcwd(), oname )
+    odir = os.path.join( os.getcwd(), 'ASCII' )
+    if os.path.isdir( odir )==False:
+        os.makedirs( odir )
+    opath = os.path.join( odir, oname )
 
     ofile = open( opath, 'w' )
     ofile.write( ostr )
