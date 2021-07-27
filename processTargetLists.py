@@ -2,7 +2,7 @@ import pdb, sys, os, time
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-from . import Utils, downloadTargetLists
+from . import Utils, downloadTargetLists, surveyGrids
 
 
 
@@ -232,7 +232,7 @@ def readTOIsNExScI( fpath, forceDownload=False ):
     dateStr = getDateStr( fpath, whichList='TOIs' )
     zRaw = readRawTOIsNExScI( fpath, forceDownload=forceDownload )
     zAll = zRaw
-    
+
     if not forceDownload:
         if 'allVals' in zAll:
             z = pickle.load(open('toiProperties.pkl', 'rb'))

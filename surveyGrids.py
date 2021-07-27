@@ -1221,6 +1221,7 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
     MpValME = z['MpValME']
     RpRs = z['RpRs']
     Jmag = z['Jmag']
+    TeqK_exofop = z['TeqK_exofop']
 
     if SMFlag == 'TSM':
         SM = z['TSM']
@@ -1234,7 +1235,7 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
     outp = { 'planetName':planetName[ixs], 'SM':SM[ixs], 'RpRs':RpRs[ixs], \
              'RA_deg':RA[ixs], 'RA_hr':RAhr[ixs], 'Dec_deg':Dec[ixs], \
              'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], 'Jmag':Jmag[ixs], \
-             'RpValRE':RpValRE[ixs], 'MpValME':MpValME[ixs] }
+             'RpValRE':RpValRE[ixs], 'MpValME':MpValME[ixs], 'TeqK_exofop': TeqK_exofop[ixs]}
     return outp, z0['dateStr']
 
 def readNoMassTESSProperties():
@@ -1579,5 +1580,16 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
 
     return opath
 
+def TeqK_ExoFOPvsKempton (Kempton, ExoFOP):
+    fig = plt.figure()
+    plt.plot(Kempton, ExoFOP, 'b.', Kempton, Kempton, 'r-')
+    plt.xlabel('TeqK Kempton')
+    plt.ylabel('TeqK ExoFOP')
+    plt.title('Temperatures computed as in Kempton et al. (2018) \n vs those pulled from the Exoplanet Archive')
 
+    oname = "TeqK_Kempton_vs_ExoFOP.pdf"
+    odir = FIGDIR
+    opathk = os.path.join( odir, oname )
+    fig.savefig( opathk )
+    print('\n Saved: ', oname)
 
