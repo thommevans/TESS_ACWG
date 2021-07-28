@@ -277,7 +277,7 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Fa
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2, plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr )
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     if publishedMasses==False:
@@ -361,7 +361,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
                                     
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2, plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr, \
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr, \
                                dateStr=dateStr, survey=survey, RADecStr=RADecStr  )
     fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                horizontalalignment='left', verticalalignment='top' )
