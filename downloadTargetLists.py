@@ -1,4 +1,4 @@
-import requests, os
+import requests, os, time, pdb
 import pandas as pd
 import numpy as np
 from datetime import datetime
@@ -11,7 +11,12 @@ def targetsWithPublishedConfirmation( forceDownload=False ):
     date = str(datetime.date(datetime.now()))
     path = 'PS_'+date+'.csv'
     confirmedFpath = path
-    if not forceDownload:
+    pklAge_hrs = ( time.time() - os.path.getmtime( confirmedFpath ) )/3600.
+    if pklAge_hrs<24:
+        fresh = True
+    else:
+        fresh = False
+    if ( forceDownload==False )*( fresh==True ):
         if os.path.exists(f'{os.getcwd()}/{path}'):
             return confirmedFpath
     
@@ -57,7 +62,12 @@ def targetsConfirmedTESS( forceDownload=False ):
     date = str(datetime.date(datetime.now()))
     path = 'PS_TESS_'+date+'.csv'
     confirmedFpath = path
-    if not forceDownload:
+    pklAge_hrs = ( time.time() - os.path.getmtime( confirmedFpath ) )/3600.
+    if pklAge_hrs<24:
+        fresh = True
+    else:
+        fresh = False
+    if ( forceDownload==False )*( fresh==True ):
         if os.path.exists(f'{os.getcwd()}/{path}'):
             return confirmedFpath
     
@@ -89,7 +99,12 @@ def targetsUnpublishedTOIs( forceDownload=False ):
     date = str(datetime.date(datetime.now()))
     path = 'TOI_'+date+'.csv'
     toiFpath = path
-    if not forceDownload:
+    pklAge_hrs = ( time.time() - os.path.getmtime( toiFpath ) )/3600.
+    if pklAge_hrs<24:
+        fresh = True
+    else:
+        fresh = False
+    if ( forceDownload==False )*( fresh==True ):
         if os.path.exists(f'{os.getcwd()}/{path}'):
             return toiFpath
     
