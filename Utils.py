@@ -26,21 +26,28 @@ AU_SI = 1.496e11
 GRAV_SI = 6.67428e-11 # gravitational constant in m^3 kg^-1 s^-2
 
 
-def photBands():
+def photBands( makePlot=False ):
     idir = os.path.dirname( __file__ )
     tessPath = os.path.join( idir, 'tess-response-function-v2.0.csv' )
     Vband = np.loadtxt( os.path.join( idir, 'Bessel_V.dat' ) )
-    Vband[:,0] /= 1000. # convert from nm to micron.
+    Vband[:,0] /= 1e4 # convert from Angstrom to micron.
     Iband = np.loadtxt( os.path.join( idir, 'Bessel_I.dat' ) )
-    Iband[:,0] /= 1000. # convert from nm to micron.    
+    Iband[:,0] /= 1e4 # convert from Angstrom to micron.    
     Tband = np.loadtxt( tessPath, delimiter=',' )
-    Tband[:,0] /= 1000. # convert from nm to micron.
+    Tband[:,0] /= 1e3 # convert from nm to micron.
     Jband = np.loadtxt( os.path.join( idir, '2MASS_J.dat' ) )
-    Jband[:,0] /= 1000. # convert from nm to micron.
+    Jband[:,0] /= 1e3 # convert from nm to micron.
     Hband = np.loadtxt( os.path.join( idir, '2MASS_H.dat' ) )
-    Hband[:,0] /= 1000. # convert from nm to micron.
+    Hband[:,0] /= 1e3 # convert from nm to micron.
     Kband = np.loadtxt( os.path.join( idir, '2MASS_Ks.dat' ) )
-    Kband[:,0] /= 1000. # convert from nm to micron.
+    Kband[:,0] /= 1e3 # convert from nm to micron.
+    if makePlot:
+        plt.figure()
+        z = [ [Vband,'V'], [Iband,'I'], [Tband,'T'], \
+              [Jband,'J'], [Hband,'H'], [Kband,'K'] ]
+        for i in z:
+            plt.plot( i[0][:,0], i[0][:,1]/i[0][:,1].max(), label=i[1] )
+        plt.legend()
     return Vband, Iband, Tband, Jband, Hband, Kband
 
 
@@ -52,7 +59,12 @@ def modelStellarSpectrum( TeffK, loggCGS, FeH=0 ):
         print( '  WARNING: set logg={0:.3f} --> logg=5'.format( loggCGS ) )
         loggCGS = 5
     sp = pysynphot.Icat( 'k93models', TeffK, FeH, loggCGS )
-    star = [ sp.wave/1e4, sp.flux ]
+    sp.convert( pysynphot.units.Angstrom )
+    sp.convert( pysynphot.units.Photlam )
+    wavAngstrom = sp.wave
+    wavMicr = wavAngstrom*(1e-4)
+    F = sp.flux*wavAngstrom
+    star = [ wavMicr, F ]
     return star
 
 
@@ -120,6 +132,17 @@ def JHKVmags( TICIDs ):
     
     return magsDict
 
+def testWASP121():
+    Vmag = 10.51
+    Jmag = 9.625
+    Kmag = 9.374
+    TeffK = 6500.
+    loggCGS = 4.5
+    Jest = convertMag( Vmag, TeffK, loggCGS, inputMag='V', outputMag='J' )
+    Kest = convertMag( Vmag, TeffK, loggCGS, inputMag='V', outputMag='Ks' )
+    print( Jmag, Jest )
+    print( Kmag, Kest )
+    return None
 
 def convertMag( inMag, TeffK, loggCGS, inputMag='T', outputMag='J', vega=None, star=None ):
     """
@@ -182,8 +205,11 @@ def convertMag( inMag, TeffK, loggCGS, inputMag='T', outputMag='J', vega=None, s
 
 def spectrumVega( makePlot=False ):
     sp = pysynphot.Icat( 'k93models', 9600, 0, 4.1 )
-    wavMicr = sp.wave/1e4
-    Flam = sp.flux
+    sp.convert( pysynphot.units.Angstrom )
+    sp.convert( pysynphot.units.Photlam )
+    wavAngstrom = sp.wave
+    wavMicr = wavAngstrom*(1e-4)
+    F = sp.flux*wavAngstrom
     if makePlot:
         # Compare to observed/model Vega from HST calibration:
         ipath = os.path.join( os.environ['PYSYN_CDBS'], 'calspec', \
@@ -191,11 +217,11 @@ def spectrumVega( makePlot=False ):
         
         hst = pysynphot.FileSpectrum( ipath )
         plt.figure()
-        plt.plot( wavMicr, Flam/Flam.max(), '-k', label='Kurucz model' )
+        plt.plot( wavMicr, F/F.max(), '-k', label='Kurucz model' )
         plt.plot( hst.wave/1e4, hst.flux/hst.flux.max(), '-r', label='HST cal' )
         plt.xlim( [ 0, 2 ] )
         plt.title( 'Vega' )
-    return wavMicr, Flam
+    return wavMicr, F
     
     
 

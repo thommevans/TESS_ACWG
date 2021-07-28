@@ -1438,6 +1438,7 @@ def readPredictedProperties(SMFlag = 'TSM'):
              'Vmag':Vmag[ixs], 'Jmag':Jmag[ixs], 'Kmag':Kmag[ixs] }
     return outp
 
+
 def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0):
     
     """
@@ -1471,37 +1472,41 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     z0 = pickle.load( ifile )
     ifile.close()
     z = z0['allVals']
-    values = ['planetName', 'TICID', 'RA_deg', 'Dec_deg', \
-              'Vmag', 'Imag', 'Jmag', 'Hmag', 'Kmag',\
-              SMFlag, 'Kamp', 'Pday', 'TstarK', 'MsMS', \
-              'MpValME', 'RpValRE' ]
+    props = ['planetName', 'TICID', 'RA', 'Dec', \
+             'Vmag', 'Imag', 'Jmag', 'Hmag', 'Kmag',\
+             SMFlag, 'Kamp', 'Pday', \
+             'TstarK', 'loggstarCGS', 'RsRS', 'MsMS', \
+             'MpValME', 'RpValRE', 'TeqK' ]
     indices = []   
-    keys = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs )[2]
-    n = len( keys )
-    topRanked = np.zeros( n )
-    for i in range( n ):
-        key = keys[i]
-        index = list( z['planetName'] ).index( key[0:key.index( ')' )+1] )
-        indices.append( index )
-        if key[-1]=='*':
-            topRanked[i] = 1
-    ASCII = {}
-    for value in values:
-        ASCII[value] = []
-        for j in indices:
-            ASCII[value].append( z[value][j] )
-    n = len( ASCII['planetName'] )
-    print( n )
-    # pdb.set_trace()
-    # Sort by declination coordinate:
-    ixs = np.argsort( ASCII['Dec_deg'] )
-    for value in values:
-        ASCII[value] = np.array( ASCII[value] )[ixs]
-    loggstarCGS = z['loggstarCGS'][ixs]
-    TeqK = z['TeqK'][ixs]
-    RpRE = z['RpValRE'][ixs]
-    SMVals = z[SMFlag][ixs]
+    topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs )[2]
+    nAll = len( z['planetName'] )
+    ixsAll = np.arange( nAll )
+    nTop = len( topRanked )
+    if topFivePredicted==True:
+        topRankedIxs = []
+        for i in range( nTop ):
+            if topRanked[i][-1]=='*': # top-ranked
+                ix = topRanked[i].rfind( ')' )
+                topRankedIxs += [ int( ixsAll[z['planetName']==topRanked[i][:ix+1]] ) ]
+        topRankedIxs = np.array( topRankedIxs )
+        topRankedIxs = topRankedIxs[np.argsort( topRankedIxs )]
+    else:
+        topRankedIxs = np.arange( nTop )
 
+    # Dictionary of properties for top-ranked to be written to ASCII output:
+    ASCII = {} 
+    for p in props:
+        ASCII[p] = z[p][topRankedIxs]
+    RA_deg = z['RA_deg'][topRankedIxs]
+    Dec_deg = z['Dec_deg'][topRankedIxs]
+    n = len( ASCII['planetName'] )
+    
+    # Sort by declination coordinate:
+    #ixs = np.argsort( ASCII['Dec_deg'] )
+    ixs = np.argsort( Dec_deg )
+    for p in props:
+        ASCII[p] = np.array( ASCII[p] )[ixs]
+    
     # Correct missing Imags (probably most of them):
     if pysynphotImport==True:
         ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
@@ -1510,16 +1515,15 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
         for i in range( m ):
             Jmag = ASCII['Jmag'][ixs[i]]
             TstarK = ASCII['TstarK'][ixs[i]]
-            loggCGS = loggstarCGS[ixs[i]]
+            loggCGS = ASCII['loggstarCGS'][ixs[i]]
             if np.isfinite( Jmag )*( TstarK<31000 )*np.isfinite( loggCGS ):
                 Imag = Utils.convertMag( Jmag, TstarK, loggCGS, \
                                          inputMag='J', outputMag='I' )
                 ASCII['Imag'][ixs[i]] = Imag
-        
     col0 = 'Target'.rjust( 18 )
-    col1 = 'TICID'.rjust( 15 )
-    col2 = 'RA(deg)'.rjust( 9 )
-    col3 = 'Dec(deg)'.rjust( 10 )
+    col1 = 'TICID'.rjust( 16 )
+    col2 = 'RA'.center( 16 )
+    col3 = 'Dec'.center( 14 )
     col4a = 'Vmag'.rjust( 7 )
     col4b = 'Imag'.rjust( 7 )
     col4c = 'Jmag'.rjust( 7 )
@@ -1529,35 +1533,37 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     col6 = 'K(m/s)'.rjust( 8 )
     col7 = 'P(d)'.rjust( 10 )
     col8 = 'Teff(K)'.rjust( 10 )
-    col9 = 'Ms(MS)'.rjust( 10 )
-    col10 = 'Mp(ME)'.rjust( 10 )
-    col11 = 'Rp(RE)'.rjust( 10 )
-    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}\n'\
+    col9 = 'logg(CGS)'.rjust( 10 )
+    col10 = 'Rs(RS)'.rjust( 10 )
+    col11 = 'Ms(MS)'.rjust( 10 )
+    col12 = 'Mp(ME)'.rjust( 10 )
+    col13 = 'Rp(RE)'.rjust( 10 )
+    col14 = 'Teq(K)'.rjust( 10 )
+    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}\n'\
            .format( col0, col1, col2, col3, \
                     col4a, col4b, col4c, col4d, col4e, \
-                    col5, col6, col7, col8, col9, col10, col11 )
+                    col5, col6, col7, col8, col9, col10, \
+                    col11, col12, col13, col14 )
     
-    ncol = [ 18, 15, 9, 10, 7, 7, 7, 7, 7, 10, 8, 10, 10, 10, 10, 10 ] # column width
-    ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1,  1, 1,  3,  0,  1,  1,  1 ] # decimal places
-    ostr += '#{0}'.format( 160*'-' )
-    m = len( values )
+    ncol = [ 18, 15, 16, 15, 7, 7, 7, 7, 7, 10, 8, \
+             10, 10, 10, 10, 10, 10, 10, 10 ] # column width
+    ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1, 1, 1,  \
+              3,  0,  1, 1, 1,  1,  1, 0 ] # decimal places
+    ostr += '#{0}'.format( 198*'-' )
+    m = len( props )
     def rowStr( i ):
-        ostr = '\n  '
+        rstr = '\n  '
         for j in range( m ): # loop over each property
-            k = values[j]
-            if ( k!='planetName' )*( k!='TICID' ): # numbers
-                ostr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+            k = props[j]
+            if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' ):
+                # numbers
+                rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
             else: # strings
-                ostr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
-        return ostr
-
+                rstr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
+        return rstr
     for i in range( n ): # loop over each TOI
-        if topFivePredicted:
-            if ( topRanked[i]==1 ):            
-                ostr += rowStr( i )
-        else:
-            ostr += rowStr( i )
-            
+        rstr = rowStr( i )
+        ostr += rstr
     # Write to file:
     oname = f'RVvaluesBy{SMFlag}.txt'
 
@@ -1574,8 +1580,6 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     ofile.write( ostr )
     ofile.close()
     print( '\nSaved:\n{0}'.format( opath ) )
-    #data = Table( list( ASCII.values() ), names=ASCII.keys() )
-    #ascii.write( data, fname, format='basic', overwrite=True )
 
     return opath
 
