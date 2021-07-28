@@ -104,7 +104,13 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', 
     wideFormat = True
     addSignature = False
     DecRestrictions = [ ['DecAll',None,None], ['DecNth',-20,None], ['DecSth',None,20] ]
-   
+    z = readTOIProperties( ipath=ipath, SMFlag=SMFlag)[0]
+    n0 = len( z['planetName'] )
+    ixs = np.isfinite( z['TeqK'] )*np.isfinite( z['SM'] )*np.isfinite( z['RpValRE'] )
+    print( '\nReading in {0:.0f} TOIs total.'.format( n0 ) )
+    print( 'Returning {0:.0f} TOIs with radii, {1}, and Teq values.'\
+           .format( ixs.sum(), SMFlag ) ) 
+    print( '\nSaved:' )
     RARestrictions = Utils.getRARanges()
     if RARanges=='completeSet':
         RARestrictions += [ [ 0, 24 ] ]
@@ -120,7 +126,7 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', 
                                              addSignature=addSignature, survey=survey, \
                                              RAMin_hr=RA[0], RAMax_hr=RA[1], \
                                              DecMin_deg=i[1], DecMax_deg=i[2],
-                                             SMFlag = SMFlag, onlyPCs = onlyPCs )[:2]
+                                             SMFlag = SMFlag, onlyPCs = onlyPCs )
             opaths[i[0]][r] = []
             for f in figPaths: # PDFs and PNGs
                 for k in list( f.keys() ):
@@ -146,7 +152,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
                           addSignature=False, survey={}, \
                           RAMin_hr=None, RAMax_hr=None, \
                           DecMin_deg=None, DecMax_deg=None, \
-                          SMFlag='TSM', onlyPCs=False ):
+                          SMFlag='TSM', onlyPCs=False, ASCII=False ):
     """
     TOIs that have not been confirmed.
     """
@@ -164,7 +170,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     # Exclude targets outside the Dec limits:
     DecStr, DecMin_deg, DecMax_deg = Utils.processDecRestriction( DecMin_deg, DecMax_deg )
     ixsDec = ( z['Dec_deg'][ixs0]>=DecMin_deg )*( z['Dec_deg'][ixs0]<=DecMax_deg )
-    RADecStr = '{0}\n{1}\n No bright limits have been applied'.format( RAStr, DecStr )
+    RADecStr = '{0}\n{1}\nNo bright limits have been applied\n'.format( RAStr, DecStr )
     
     if onlyPCs == True:
         ixsPCs = ( [i[-4:]=='(PC)' for i in z['planetName'][ixs0]] )
@@ -182,7 +188,12 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2, plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
+    if ASCII:
+        plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
+                                       titleStr=titleStr, dateStr=dateStr, \
+                                       survey=survey, RADecStr=RADecStr, ASCII=ASCII )
+        return plList
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
                                        titleStr=titleStr, dateStr=dateStr, \
                                        survey=survey, RADecStr=RADecStr )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
@@ -200,7 +211,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
             addSignatureToAxis( ax )
     
     figs = { '2':fig2 }
-    print( '\nSaved:' )
+
     if wideFormat==True:
         odirExt = 'survey{0}/wideFormat/TOIs/{1}'.format( survey['surveyName'], \
                                                          SMFlag)
@@ -229,7 +240,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
         opathsPNG[k] = opathk_png
         print( '{0}\n{1}'.format( opathk, opathk_png ) )
         print( 'RADecStr = {0}'.format( RADecStr ) )
-    return opathsPDF, opathsPNG, plList
+    return opathsPDF, opathsPNG
     
     
 def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=False, SMFlag = 'TSM' ):
@@ -279,7 +290,7 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Fa
             addSignatureToAxis( ax )
     
     figs = { '2':fig2 }
-    print( '\nSaved:' )
+
     if wideFormat==True:
         odirExt = 'survey{0}/wideFormat'.format( surveyName ) #surveyName is undefined
     else:
@@ -681,7 +692,8 @@ def addSignatureToAxis( ax ):
 
 
 def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
-                   RADecStr='', dateStr='', wideFormat=True, survey={} ):
+                   RADecStr='', dateStr='', wideFormat=True, survey={}, \
+                   ASCII=False ):
     """
     Plots grid of planets and TOIs by TeqK and RpRE
     SM: (TSM or ESM, list of float)
@@ -689,23 +701,32 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
 
     if cgrid is None:
         cgrid = np.array( [ 201, 148, 199 ] )/256.
-    fig, ax, ax2 = generateAxisGrid( wideFormat=wideFormat, titleStr=titleStr, \
-                                     RADecStr=RADecStr )
-    
+        
+    if not ASCII:
+        fig, ax, ax2 = generateAxisGrid( wideFormat=wideFormat, titleStr=titleStr, \
+                                         RADecStr=RADecStr )
+    else:
+        ax = None
     Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
+    
     nT = len( Tgrid )
     nR = len( Rgrid )
     xLines = np.arange( 0.5, nT+0.5 )
     yLines = np.arange( 0.5, nR+0.5 )
+    
+    if ASCII:
+        plList = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
+                                   xLines, yLines, survey=survey, ASCII=True )
+        return plList
+    ax, SMstr = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
+                           xLines, yLines, survey=survey )
     for i in range( nT ):
         ax.plot( [xLines[i],xLines[i]], [yLines.min(),yLines.max()], '-', \
                  c=cgrid, zorder=1 )
     for i in range( nR ):
         ax.plot( [xLines.min(),xLines.max()], [yLines[i],yLines[i]], '-', \
                  c=cgrid, zorder=1 )
-    ax, SMstr, plList = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                                   xLines, yLines, survey=survey )
-
+    
     formatAxisTicks( ax )
     ax.xaxis.set_ticks( xLines, minor=False )
     ax.yaxis.set_ticks( yLines, minor=False )
@@ -730,7 +751,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
     ax.set_xlim( [ xLines.min()-dx, xLines.max()+dx ] )
     ax.set_ylim( [ yLines.min()-dy, yLines.max()+dy ] )
 
-    return fig, ax, plList
+    return fig, ax
 
 
 def formatAxisTicks( ax ):
@@ -750,7 +771,7 @@ def formatAxisTicks( ax ):
     return ax
 
 def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                xLines, yLines, survey={} ):
+                xLines, yLines, survey={}, ASCII=False ):
 
     """
     Supplementary routine to graph planets and TOIs with top SM values in each grid section
@@ -810,19 +831,22 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                 
                     if SM[1][ixs][k] >= predSM:
                         plStr += '*'
-                    # Silver if APC or CP
-                    if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ): 
-                        c = 'Silver'
-                        wt = 'normal'
-                    else: # Black if PC
-                        c = 'Black'
-                        wt = 'normal'
-                    ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
-                             horizontalalignment='left', verticalalignment='center' )
-                    ck = Utils.getStarColor( TstarK[ixs][k] )
-                    ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
                     plNames.append(plStr)
-    return ax, SMstr, plNames
+                    if not ASCII:
+                        # Silver if APC or CP
+                        if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ): 
+                            c = 'Silver'
+                            wt = 'normal'
+                        else: # Black if PC
+                            c = 'Black'
+                            wt = 'normal'
+                        ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
+                                 horizontalalignment='left', verticalalignment='center' )
+                        ck = Utils.getStarColor( TstarK[ixs][k] )
+                        ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
+    if ASCII:
+        return plNames                
+    return ax, SMstr
 
 
 def generateAxisScatter( xlim=[0,3100], ylim=[0,26], wideFormat=False, \
@@ -1212,7 +1236,6 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
     RA = z['RA_deg']
     RAhr = RA*(24/360.)
     Dec = z['Dec_deg']
-    n0 = len( planetName )
     RsRS = z['RsRS']
     TeqK = z['TeqK']
     Jmag = z['Jmag']
@@ -1228,9 +1251,6 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
         SM = z['ESM']
 
     ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
-    print( '\nReading in {0:.0f} TOIs total.'.format( n0 ) )
-    print( 'Returning {0:.0f} TOIs with radii, {1}, and Teq values.'\
-           .format( ixs.sum(), SMFlag ) )    
     outp = { 'planetName':planetName[ixs], 'SM':SM[ixs], 'RpRs':RpRs[ixs], \
              'RA_deg':RA[ixs], 'RA_hr':RAhr[ixs], 'Dec_deg':Dec[ixs], \
              'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], 'Jmag':Jmag[ixs], \
@@ -1478,7 +1498,8 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
              'TstarK', 'loggstarCGS', 'RsRS', 'MsMS', \
              'MpValME', 'RpValRE', 'TeqK' ]
     indices = []   
-    topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs )[2]
+    topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs,\
+                                     ASCII=True)
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
