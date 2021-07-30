@@ -1487,7 +1487,7 @@ def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0
             
 
 def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True ):
-    Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )    
+    Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
     ifile = open( 'toiProperties.pkl', 'rb' )
     z0 = pickle.load( ifile )
     ifile.close()
@@ -1499,29 +1499,36 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
              'MpValME', 'RpValRE', 'TeqK' ]
     indices = []   
     topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs,\
-                                     ASCII=True)
+                                      ASCII=True)
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
-    if topFivePredicted==True:
-        topRankedIxs = []
+    topRankedIxs = np.zeros( nTop, dtype=int )
+    for i in range( nTop ):
+        ixName = topRanked[i].rfind( ')' )
+        ix = int( ixsAll[z['planetName']==topRanked[i][:ixName+1]] )
+        topRankedIxs[i] = ix
+        if topRanked[i][-1]=='*':
+            z['planetName'][ix] = '{0}*'.format( z['planetName'][ix] )
+    if topFivePredicted:
+        topToPrintIxs = []
         for i in range( nTop ):
-            if topRanked[i][-1]=='*': # top-ranked
-                ix = topRanked[i].rfind( ')' )
-                topRankedIxs += [ int( ixsAll[z['planetName']==topRanked[i][:ix+1]] ) ]
-        topRankedIxs = np.array( topRankedIxs )
-        topRankedIxs = topRankedIxs[np.argsort( topRankedIxs )]
+            ix = topRankedIxs[i]
+            if z['planetName'][ix][-1]=='*':
+                topToPrintIxs += [ ix ]
     else:
-        topRankedIxs = np.arange( nTop )
-
+        topToPrintIxs = topRankedIxs
+    n = len( topToPrintIxs )
+    
     # Dictionary of properties for top-ranked to be written to ASCII output:
     ASCII = {} 
     for p in props:
-        ASCII[p] = z[p][topRankedIxs]
-    RA_deg = z['RA_deg'][topRankedIxs]
-    Dec_deg = z['Dec_deg'][topRankedIxs]
-    n = len( ASCII['planetName'] )
-    
+        ASCII[p] = z[p][topToPrintIxs]
+    RA_deg = z['RA_deg'][topToPrintIxs]
+    Dec_deg = z['Dec_deg'][topToPrintIxs]
+    #print( ASCII['planetName'] )
+    #pdb.set_trace()
+
     # Sort by declination coordinate:
     #ixs = np.argsort( ASCII['Dec_deg'] )
     ixs = np.argsort( Dec_deg )
@@ -1585,6 +1592,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     for i in range( n ): # loop over each TOI
         rstr = rowStr( i )
         ostr += rstr
+        
     # Write to file:
     oname = f'RVvaluesBy{SMFlag}.txt'
 
