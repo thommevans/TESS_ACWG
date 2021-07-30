@@ -6,3 +6,6 @@ dist/*
 /__init__.py
 *.pdf
 *.png
+*.txt
+*.pkl
+*.csv
