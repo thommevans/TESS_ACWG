@@ -125,20 +125,20 @@ def ExoFopTOIs( forceDownload=False ):
             return toiFpath
         
     query = "https://exofop.ipac.caltech.edu/tess/download_toi.php?sort=toi&output=csv"
-    planets = requests.get(query)
+    planets = requests.get( query )
     planets = planets.text.split('\n')
 
-    columns = planets[0].split(',')[:-5]
+    columns = planets[0].split(',')
+    del(columns[53:57])
+    
     data = [i.split(',') for i in planets[1:]]
-    for i in range(len(data)):
-        length = len(data[i])
-        if length > 54:
-            data[i] = data[i][:-(length - 53)]
+    for i in range( len(data) ):
+        if len( data[i] ) > 54:
+            del( data[i][-(len( data[i] ) - 53):-1] )
             
-    df = pd.DataFrame(columns=columns, data=data)
-    df = df.replace(to_replace='', value=np.nan)
+    df = pd.DataFrame( columns=columns, data=data )
+    df = df.replace( to_replace='', value=np.nan )
     df.head()
-    df.to_csv(toiFpath, index=False)
+    df.to_csv( toiFpath, index=False )
     
     return toiFpath
-ExoFopTOIs()
