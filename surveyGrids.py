@@ -339,6 +339,10 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     RpLsig = z['RpLsigRE'][ixs]
     RpUsig = z['RpUsigRE'][ixs]
     TESS = np.array( z['TESS'][ixs], dtype=int )
+    plTess = pl[TESS>0]
+    plTess=list(plTess)
+    for i in range(len(plTess)):
+        plTess[i] = plTess[i].replace(' ', '')
 
     onames = {}
     
@@ -364,7 +368,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
                                     
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr, \
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, titleStr=titleStr, \
                                dateStr=dateStr, survey=survey, RADecStr=RADecStr, HeatMap = HeatMap  )
     fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                horizontalalignment='left', verticalalignment='top' )
@@ -694,7 +698,7 @@ def addSignatureToAxis( ax ):
     return None
 
 
-def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
+def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr='', \
                    RADecStr='', dateStr='', wideFormat=True, survey={}, \
                    ASCII=False, HeatMap = True ):
     """
@@ -722,7 +726,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
                                    xLines, yLines, survey=survey, ASCII=True )
         return plList
     ax, SMstr = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                           xLines, yLines, survey=survey )
+                           xLines, yLines, plTess, survey=survey )
     for i in range( nT ):
         ax.plot( [xLines[i],xLines[i]], [yLines.min(),yLines.max()], '-', \
                  c=cgrid, zorder=1 )
@@ -777,7 +781,7 @@ def formatAxisTicks( ax ):
     return ax
 
 def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                xLines, yLines, survey={}, ASCII=False ):
+                xLines, yLines, plTess=None, survey={}, ASCII=False ):
 
     """
     Supplementary routine to graph planets and TOIs with top SM values in each grid section
@@ -846,6 +850,9 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                         else: # Black if PC
                             c = 'Black'
                             wt = 'normal'
+                        if plTess != None:
+                            if plStr.split(' ')[0] in plTess:
+                                wt = 'bold'
                         ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
                                  horizontalalignment='left', verticalalignment='center' )
                         ck = Utils.getStarColor( TstarK[ixs][k] )
