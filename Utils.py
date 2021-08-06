@@ -623,3 +623,28 @@ def TeqK_Kempton (Pday, MsMS, TstarK, RsRS):
     TeqK = TstarK * (RsSI/a)**(1/2) * (1/4)**(1/4)
 
     return TeqK
+
+def HeatMapValues(TRange, RRange, TeqK, RpValRE, predTeqK, predRpVal):
+    TOI_TeqK = list(TeqK[:])
+    TOI_Rp = list(RpValRE[:])
+    pred_TeqK = list(predTeqK[:])
+    pred_Rp = list(predRpVal[:])
+    
+    TOI_n = 0
+    for i in range(len(TOI_TeqK)): #Check if TOI is in box, if so then add one to TOI_n
+        if TRange[0] <= TOI_TeqK[i] <= TRange[1] and RRange[0] <= TOI_Rp[i] <= RRange[1]:
+            TOI_n += 1
+
+    pred_n = 0
+    for i in range(len(pred_TeqK)): #Check if pred is in box, if so then add one to pred_n
+        if TRange[0] <= pred_TeqK[i] <= TRange[1] and RRange[0] <= pred_Rp[i] <= RRange[1]:
+            pred_n += 1
+
+    #Generate fraction of TOIs, pred
+    TOI_frac = TOI_n/len(TOI_TeqK)
+    pred_frac = pred_n/len(pred_TeqK)
+    if pred_frac == 0: #Prevents divide by zero error
+        pred_frac = 1
+    #Final value is ratio of fraction of TOIs to pred
+    value = TOI_frac/pred_frac
+    return value

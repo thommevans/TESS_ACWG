@@ -75,7 +75,7 @@ def quickCycle1():
     # pdb.set_trace()
 
 
-def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
+def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM', HeatMap = True ):
     """
     """
     wideFormat = True
@@ -86,7 +86,7 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
                                           showNeptuneRadius=showNeptuneRadius, \
                                           showJupiterRadius=showJupiterRadius, \
                                           survey=survey, addSignature=addSignature, \
-                                          SMFlag = SMFlag )
+                                          SMFlag = SMFlag, HeatMap = HeatMap )
     for f in figPaths: # PDFs and PNGs
         for k in list( f.keys() ):
             fnew = f[k].replace( 'Confirmed_', 'Confirmed_{0}_'\
@@ -98,7 +98,7 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
     return None
 
 
-def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', onlyPCs = False ):
+def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', onlyPCs = False, HeatMap = True ):
     """
     """
     wideFormat = True
@@ -126,7 +126,8 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', 
                                              addSignature=addSignature, survey=survey, \
                                              RAMin_hr=RA[0], RAMax_hr=RA[1], \
                                              DecMin_deg=i[1], DecMax_deg=i[2],
-                                             SMFlag = SMFlag, onlyPCs = onlyPCs )
+                                             SMFlag = SMFlag, onlyPCs = onlyPCs, \
+                                             HeatMap = HeatMap )
             opaths[i[0]][r] = []
             for f in figPaths: # PDFs and PNGs
                 for k in list( f.keys() ):
@@ -152,7 +153,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
                           addSignature=False, survey={}, \
                           RAMin_hr=None, RAMax_hr=None, \
                           DecMin_deg=None, DecMax_deg=None, \
-                          SMFlag='TSM', onlyPCs=False, ASCII=False ):
+                          SMFlag='TSM', onlyPCs=False, ASCII=False, HeatMap = True ):
     """
     TOIs that have not been confirmed.
     """
@@ -191,11 +192,12 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     if ASCII:
         plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
                                        titleStr=titleStr, dateStr=dateStr, \
-                                       survey=survey, RADecStr=RADecStr, ASCII=ASCII )
+                                       survey=survey, RADecStr=RADecStr, ASCII=ASCII, \
+                                       HeatMap=HeatMap )
         return plList
     fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
                                        titleStr=titleStr, dateStr=dateStr, \
-                                       survey=survey, RADecStr=RADecStr )
+                                       survey=survey, RADecStr=RADecStr, HeatMap = HeatMap )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
@@ -209,7 +211,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     if addSignature==True:
         for ax in [ax2]:
             addSignatureToAxis( ax )
-    
+
     figs = { '2':fig2 }
 
     if wideFormat==True:
@@ -310,7 +312,8 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Fa
     
 def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True, \
                                survey={}, addSignature=False, showGrid=True, \
-                               showNeptuneRadius=False, showJupiterRadius=False, SMFlag='TSM' ):
+                               showNeptuneRadius=False, showJupiterRadius=False, \
+                               SMFlag='TSM', HeatMap = True ):
     """
     
     """
@@ -362,7 +365,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
     fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr, \
-                               dateStr=dateStr, survey=survey, RADecStr=RADecStr  )
+                               dateStr=dateStr, survey=survey, RADecStr=RADecStr, HeatMap = HeatMap  )
     fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                horizontalalignment='left', verticalalignment='top' )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
@@ -693,7 +696,7 @@ def addSignatureToAxis( ax ):
 
 def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
                    RADecStr='', dateStr='', wideFormat=True, survey={}, \
-                   ASCII=False ):
+                   ASCII=False, HeatMap = True ):
     """
     Plots grid of planets and TOIs by TeqK and RpRE
     SM: (TSM or ESM, list of float)
@@ -726,6 +729,9 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
     for i in range( nR ):
         ax.plot( [xLines.min(),xLines.max()], [yLines[i],yLines[i]], '-', \
                  c=cgrid, zorder=1 )
+    
+    if HeatMap:
+        ax = addHeatMap(ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid)
     
     formatAxisTicks( ax )
     ax.xaxis.set_ticks( xLines, minor=False )
@@ -1614,6 +1620,10 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     return opath
 
 def TeqK_ExoFOPvsKempton (Kempton, ExoFOP):
+    """
+    Creates a plot that compares the values of TeqK computed as in Kempton et al. and those pulled
+    from the Exoplanet Archive
+    """
     fig = plt.figure()
     plt.plot(Kempton, ExoFOP, 'b.', Kempton, Kempton, 'r-')
     plt.xlabel('TeqK Kempton')
@@ -1625,4 +1635,56 @@ def TeqK_ExoFOPvsKempton (Kempton, ExoFOP):
     opathk = os.path.join( odir, oname )
     fig.savefig( opathk )
     print('\n Saved: ', oname)
+
+def addHeatMap (ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid):
+    """
+    Adds a Heat Map to a figure based on fraction of planets/TOIs found in box compared to 
+    those predicted by Barclay et al.
+    """
+    boxes = []
+    box_values = []
+    boxn = 0
+    zPredicted = readPredictedProperties()
+    predTeqK = zPredicted['TeqK']
+    predRpVal = zPredicted['RpValRE'] 
+
+    # Generates the box coordinates and numbers, using ticks from 0.5 to 6.5
+    for x in xLines[:-1]:
+        for y in yLines[:-1]:
+            box_value = Utils.HeatMapValues([Tgrid[int(x-0.5)], Tgrid[int(x+0.5)]], \
+                [Rgrid[int(y-0.5)], Rgrid[int(y+0.5)]], \
+                TeqK, RpRE, predTeqK, predRpVal) # Calculates fraction of TOIs:fraction of pred in box
+            boxes.append([[x, x, x+1, x+1], [y, y+1, y+1, y], boxn]) # Box coordinates and number
+            box_values.append(box_value)
+            boxn +=1      
+
+    box_values = np.array(box_values)
+
+    # Creates a new color map based on 'Oranges', using the first half of the map
+    CMapBig = plt.cm.get_cmap('Oranges', 512) 
+    cmap = matplotlib.colors.ListedColormap(CMapBig(np.linspace(0, 0.5, 256)))
+
+    # Normalizes the box values linearly, removing outliers and setting their values to 0 or 1
+    box_avg = np.average(box_values)
+    box_std = np.std(box_values)
+    box_values2 = list(box_values[:])
+    for value in box_values2:
+        if np.abs(value-box_avg) > 3*box_std:
+            box_values2.remove(value)
+
+    minVal = np.min(box_values2)
+    maxVal = np.max(box_values2)
+    box_norm = (box_values - minVal)/(maxVal-minVal)
+    for i in range(len(box_norm)):
+        if box_norm[i] < 0:
+            box_norm[i] = 0
+        elif box_norm[i] > 1:
+            box_norm[i] = 1
+
+    # Colors in the boxes
+    for box in boxes:
+        box_color = cmap(box_norm[box[2]])
+        ax.fill(box[0], box[1], color=box_color, zorder = 0)
+    
+    return ax
 

@@ -27,7 +27,7 @@ else:
 survey = { 'surveyName':'ACWG', 'obsSample':'PublishedMassesOnly', 'framework':'ACWG', \
            'gridEdges':surveySetup.gridEdges, 'thresholdTSM':surveySetup.thresholdTSM, \
            'thresholdESM':surveySetup.thresholdESM, 'preCuts':surveySetup.preCutsConfirmed }
-figFpaths = surveyGrids.Confirmed( ipath=confirmedPickle, survey=survey, SMFlag = 'ESM' )
+figFpaths = surveyGrids.Confirmed( ipath=confirmedPickle, survey=survey, SMFlag = 'ESM', HeatMap = False )
 
 ########################################################################
 # Step 4: Make a plot comparing the assumed mass-radius relation to

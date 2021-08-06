@@ -22,5 +22,5 @@ survey = { 'surveyName':'ACWG', 'framework':'ACWG', \
 RARanges = 'completeSet'
 onlyPCs = 0 # 1 = True, 0 = False
 figFpaths = surveyGrids.TOIs( ipath=toiPickle, survey=survey, RARanges=RARanges, \
-                             SMFlag = 'ESM', onlyPCs = onlyPCs )
+                             SMFlag = 'ESM', onlyPCs = onlyPCs, HeatMap = True )
 ASCII = surveyGrids.CreateASCII( survey=survey, SMFlag='ESM', onlyPCs = onlyPCs )
