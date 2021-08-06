@@ -115,3 +115,30 @@ def targetsUnpublishedTOIs( forceDownload=False ):
     planets_df.to_csv(toiFpath, index=False)
     
     return toiFpath
+
+def ExoFopTOIs( forceDownload=False ):
+    date = str(datetime.date(datetime.now()))
+    path = 'ExoFop_'+date+'.csv'
+    toiFpath = path
+    if not forceDownload:
+        if os.path.exists(f'{os.getcwd()}/{path}'):
+            return toiFpath
+        
+    query = "https://exofop.ipac.caltech.edu/tess/download_toi.php?sort=toi&output=csv"
+    planets = requests.get( query )
+    planets = planets.text.split('\n')
+
+    columns = planets[0].split(',')
+    del(columns[53:57])
+    
+    data = [i.split(',') for i in planets[1:]]
+    for i in range( len(data) ):
+        if len( data[i] ) > 54:
+            del( data[i][-(len( data[i] ) - 53):-1] )
+            
+    df = pd.DataFrame( columns=columns, data=data )
+    df = df.replace( to_replace='', value=np.nan )
+    df.head()
+    df.to_csv( toiFpath, index=False )
+    
+    return toiFpath

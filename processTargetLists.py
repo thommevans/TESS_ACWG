@@ -134,7 +134,7 @@ def readRawBarclayLines_v2():
     z['b'] = []
     z['T14hr'] = []
     z['Insol'] = []
-    detected = []
+    z['conservativeDetected'] = []
 
     n=0
     for line in ifile:
@@ -163,26 +163,31 @@ def readRawBarclayLines_v2():
             z['b'] += [l[27-33]]
             z['T14hr'] += [l[28-33]]
             z['Insol'] += [l[-3]]
-            detected += [int(l[-13])] 
+            z['conservativeDetected'] += [int(l[-13])] 
 
     ifile.close()
 
     #Correct the data types
     for key in z:
         for i in range(len(z[key])):
-            if key not in ['cad2min', 'subGiants']:
+            if key not in ['cad2min', 'subGiants','conservativeDetected']:
                 z[key][i] = float(z[key][i])
             else:
                 z[key][i] = int(z[key][i])
 
-    #Cut out undetected
-    ixs = []
-    for i in range(len(detected)):
-        if int(detected[i]):
-            ixs.append(i)
+    # UPDATE: Just store conservative detections as an additional array
+    #Cut out undetected according to the Barclay et al 'conservative model'
+    # See Section 4.2 of Barclay, Pepper, Quintana (2020).
+    #ixs = []
+    #for i in range(len(detected)):
+    #    if int(detected[i]):
+    #        ixs.append(i)
+    #z1 = {}
+    #for key in z:
+    #    z1[key] = np.array(z[key])[ixs]
     z1 = {}
     for key in z:
-        z1[key] = np.array(z[key])[ixs]
+        z1[key] = np.array(z[key])
 
     return z1
 
