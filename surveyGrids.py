@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-from . import Utils, processTargetLists
+from . import Utils, processTargetLists, downloadTargetLists
 from . import surveySetup
 #from astropy.io import ascii
 from astropy.table import Table
@@ -1499,8 +1499,22 @@ def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0
 
     return  highestSMs[0]
             
+def ReadExoFOPProperties( forceDownload=False ):
+    
+    exoFOPpath = downloadTargetLists.ExoFopTOIs( forceDownload=forceDownload )
+    t = np.genfromtxt( exoFOPpath, dtype=str, delimiter=',', invalid_raise=False )
+    cols = t[0,:]
+    z = {}
+    z['TICID'] = np.array( t[1:,cols=='TIC ID'].flatten(), dtype='<U20' )
+    z['Priority'] = np.array( t[1:,cols=='Master'].flatten(), dtype='<U20' )
+    z['Comments'] = np.array( t[1:,cols=='Comments'].flatten() )
+    for i in range(len(z['Comments'])):
+        z['Comments'][i] = z['Comments'][i].replace('"','')
+
+    return z
 
 def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True ):
+    
     Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
     ifile = open( 'toiProperties.pkl', 'rb' )
     z0 = pickle.load( ifile )
@@ -1548,7 +1562,16 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     ixs = np.argsort( Dec_deg )
     for p in props:
         ASCII[p] = np.array( ASCII[p] )[ixs]
-    
+    ticid = ASCII['TICID']
+    exoFOP = ReadExoFOPProperties()
+    # print(exoFOP)
+    indices = [i for i in range(len(exoFOP['TICID'])) \
+                if exoFOP['TICID'][i] in ticid]
+    # print(indices)
+    for p in ['Priority', 'Comments']:
+        ASCII[p] = np.array( exoFOP[p] )[indices]
+        props.append(p)
+
     # Correct missing Imags (probably most of them):
     if pysynphotImport==True:
         ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
@@ -1581,23 +1604,25 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     col12 = 'Mp(ME)'.rjust( 10 )
     col13 = 'Rp(RE)'.rjust( 10 )
     col14 = 'Teq(K)'.rjust( 10 )
-    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}\n'\
+    col15 = 'Priority'.rjust( 12 )
+    col16 = 'Comments'.rjust( 25 )
+    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}\n'\
            .format( col0, col1, col2, col3, \
                     col4a, col4b, col4c, col4d, col4e, \
                     col5, col6, col7, col8, col9, col10, \
-                    col11, col12, col13, col14 )
-    
+                    col11, col12, col13, col14, col15, col16 )
+
     ncol = [ 18, 15, 16, 15, 7, 7, 7, 7, 7, 10, 8, \
-             10, 10, 10, 10, 10, 10, 10, 10 ] # column width
+             10, 10, 10, 10, 10, 10, 10, 10, 7, 50 ] # column width
     ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1, 1, 1,  \
-              3,  0,  1, 1, 1,  1,  1, 0 ] # decimal places
-    ostr += '#{0}'.format( 198*'-' )
+              3,  0,  1, 1, 1,  1,  1, 0, 0, 0 ] # decimal places
+    ostr += '#{0}'.format( 323*'-' )
     m = len( props )
     def rowStr( i ):
         rstr = '\n  '
         for j in range( m ): # loop over each property
             k = props[j]
-            if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' ):
+            if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' )*(k!='Comments')*(k!='Priority'):
                 # numbers
                 rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
             else: # strings
@@ -1606,7 +1631,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     for i in range( n ): # loop over each TOI
         rstr = rowStr( i )
         ostr += rstr
-        
+    # print(ostr)    
     # Write to file:
     oname = f'RVvaluesBy{SMFlag}.txt'
 
