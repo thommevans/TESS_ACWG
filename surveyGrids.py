@@ -1605,7 +1605,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     col13 = 'Rp(RE)'.rjust( 10 )
     col14 = 'Teq(K)'.rjust( 10 )
     col15 = 'Priority'.rjust( 12 )
-    col16 = 'Comments'.rjust( 25 )
+    col16 = 'Comments'.ljust( 25 )
     ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}\n'\
            .format( col0, col1, col2, col3, \
                     col4a, col4b, col4c, col4d, col4e, \
@@ -1625,6 +1625,9 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
             if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' )*(k!='Comments')*(k!='Priority'):
                 # numbers
                 rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+            elif (k=='Comments'):
+                # numbers
+                rstr += '{0}'.format( ASCII[k][i] ).ljust( ncol[j] )
             else: # strings
                 rstr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
         return rstr
