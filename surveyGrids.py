@@ -1585,7 +1585,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
                 Imag = Utils.convertMag( Jmag, TstarK, loggCGS, \
                                          inputMag='J', outputMag='I' )
                 ASCII['Imag'][ixs[i]] = Imag
-    col0 = 'Target'.rjust( 18 )
+    col0 = 'Target'.rjust( 18 ) 
     col1 = 'TICID'.rjust( 16 )
     col2 = 'RA'.center( 16 )
     col3 = 'Dec'.center( 14 )
@@ -1604,8 +1604,8 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     col12 = 'Mp(ME)'.rjust( 10 )
     col13 = 'Rp(RE)'.rjust( 10 )
     col14 = 'Teq(K)'.rjust( 10 )
-    col15 = 'Priority'.rjust( 12 )
-    col16 = 'Comments'.ljust( 25 )
+    col15 = 'Priority'.center( 12 )
+    col16 = 'Comments'.ljust( 50 )
     ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}\n'\
            .format( col0, col1, col2, col3, \
                     col4a, col4b, col4c, col4d, col4e, \
@@ -1613,7 +1613,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
                     col11, col12, col13, col14, col15, col16 )
 
     ncol = [ 18, 15, 16, 15, 7, 7, 7, 7, 7, 10, 8, \
-             10, 10, 10, 10, 10, 10, 10, 10, 7, 50 ] # column width
+             10, 10, 10, 10, 10, 10, 10, 10, 12, 50 ] # column width
     ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1, 1, 1,  \
               3,  0,  1, 1, 1,  1,  1, 0, 0, 0 ] # decimal places
     ostr += '#{0}'.format( 323*'-' )
@@ -1625,6 +1625,8 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
             if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' )*(k!='Comments')*(k!='Priority'):
                 # numbers
                 rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+            elif (k=='Priority'):
+                rstr += '{0}'.format( ASCII[k][i] ).center( ncol[j] )
             elif (k=='Comments'):
                 # numbers
                 rstr += '{0}'.format( ASCII[k][i] ).ljust( ncol[j] )
