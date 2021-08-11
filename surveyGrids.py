@@ -203,11 +203,18 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
     if onlyPCs == True:
         toiNote = 'Only TOIs with "PC" TFOPWG Disposition are displayed\n'
-    toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
-    fig2.text( 0.08, 0.91-0.10, toiNote, \
-               c='black', fontsize=14, horizontalalignment='left', \
-               verticalalignment='bottom' )
     
+    if HeatMap:
+        toiNote += 'Masses estimated from empirical relation \n(adapted from Chen & Kipping 2017)'
+        fig2.text( 0.98, 0.9, toiNote, \
+                c='black', fontsize=14, horizontalalignment='right', \
+                verticalalignment='bottom' )
+    else:
+        toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
+        fig2.text( 0.08, 0.91-0.10, toiNote, \
+                c='black', fontsize=14, horizontalalignment='left', \
+                verticalalignment='bottom' )
+
     if addSignature==True:
         for ax in [ax2]:
             addSignatureToAxis( ax )
@@ -242,6 +249,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
         opathsPNG[k] = opathk_png
         print( '{0}\n{1}'.format( opathk, opathk_png ) )
         print( 'RADecStr = {0}'.format( RADecStr ) )
+    plt.show()
     return opathsPDF, opathsPNG
     
     
@@ -706,8 +714,12 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
         cgrid = np.array( [ 201, 148, 199 ] )/256.
         
     if not ASCII:
-        fig, ax, ax2 = generateAxisGrid( wideFormat=wideFormat, titleStr=titleStr, \
-                                         RADecStr=RADecStr )
+        if HeatMap:
+            fig, ax, ax2, axc = generateAxisGrid( wideFormat=wideFormat, titleStr=titleStr, \
+                                            RADecStr=RADecStr, HeatMap=HeatMap )
+        else:
+            fig, ax, ax2 = generateAxisGrid( wideFormat=wideFormat, titleStr=titleStr, \
+                                            RADecStr=RADecStr, HeatMap=HeatMap )
     else:
         ax = None
     Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
@@ -731,7 +743,8 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
                  c=cgrid, zorder=1 )
     
     if HeatMap:
-        ax = addHeatMap(ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid)
+        ax, val = addHeatMap(ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid)
+        addColorBar(axc, val)
     
     formatAxisTicks( ax )
     ax.xaxis.set_ticks( xLines, minor=False )
@@ -868,20 +881,32 @@ def generateAxisScatter( xlim=[0,3100], ylim=[0,26], wideFormat=False, \
 
 
 def generateAxisGrid( xlim=[0,3100], ylim=[0,26], wideFormat=False, whichType='RpTeq', \
-                      RADecStr='', titleStr='', showLegend=True ):
-    fig, ax, axLegend = generateAxes( wideFormat=wideFormat, whichType=whichType, \
-                                      showLegend=showLegend )
+                      RADecStr='', titleStr='', showLegend=True, HeatMap = True ):
+    if HeatMap:
+        fig, ax, axLegend, axc = generateAxes( wideFormat=wideFormat, whichType=whichType, \
+                                        showLegend=showLegend, HeatMap=HeatMap )
+    else:
+        fig, ax, axLegend = generateAxes( wideFormat=wideFormat, whichType=whichType, \
+                                        showLegend=showLegend, HeatMap=HeatMap )
     title_fs = 18
     toplineY = 0.98
     fig.text( 0.02, toplineY-0.02, titleStr, fontsize=title_fs, weight='heavy', \
               rotation=0, horizontalalignment='left', verticalalignment='bottom' )
     subtitle_fs = 14
-    fig.text( 0.98, toplineY, RADecStr, fontsize=subtitle_fs, weight='normal', \
-              rotation=0, horizontalalignment='right', verticalalignment='top' )
-    return fig, ax, axLegend
+    if HeatMap:
+        label_fs = 12
+        cb_text = 'Fraction of TOIs vs Fraction of Predicted Planets'
+        axc.text( 0, 2, cb_text, fontsize=label_fs, \
+                horizontalalignment='left', verticalalignment='center', \
+                rotation=0, transform=axc.transAxes ) # Creates the color bar label
+        return fig, ax, axLegend, axc
+    else:
+        fig.text( 0.98, toplineY, RADecStr, fontsize=subtitle_fs, weight='normal', \
+                rotation=0, horizontalalignment='right', verticalalignment='top' )
+        return fig, ax, axLegend
 
 
-def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True ):
+def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap = True ):
     if wideFormat==False:
         fig = plt.figure( figsize=[11,9] )
         xlow = 0.09
@@ -912,6 +937,8 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True ):
         addStellarSpectralTypeLegend( axLegend, ms=8, text_fs=10 )
     else:
         axLegend = None
+    if HeatMap:
+        axc = fig.add_axes([xlow+0.02, ylow2, axw2, 0.015*axh]) #Colorbar axis
     ax = formatAxes( ax, whichType=whichType )
     label_fs = 16
     if whichType=='RpTeq':
@@ -935,7 +962,10 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True ):
         fig.text( xlow2+0.5*axw2, sptY, subtitleStr, fontsize=subtitle_fs, \
                   horizontalalignment='center', verticalalignment='bottom', \
                   weight='normal', rotation=0 )
-    return fig, ax, axLegend
+    if HeatMap:
+        return fig, ax, axLegend, axc
+    else:
+        return fig, ax, axLegend
 
 
 def formatAxes( ax, whichType='RpTeq', xlim='default', ylim='default', \
@@ -1686,5 +1716,16 @@ def addHeatMap (ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid):
         box_color = cmap(box_norm[box[2]])
         ax.fill(box[0], box[1], color=box_color, zorder = 0)
     
-    return ax
+    return ax, (minVal, maxVal)
 
+def addColorBar(ax, val):
+    # Creates a new color map based on 'Oranges', using the first half of the map
+    CMapBig = plt.cm.get_cmap('Oranges', 512) 
+    cmap = matplotlib.colors.ListedColormap(CMapBig(np.linspace(0, 0.5, 256)))
+    tick_fs = 9
+    ax.tick_params( labelsize=tick_fs ) # Changes the font size of tick marks
+    cb_norm = matplotlib.colors.Normalize( vmin=val[0], vmax=val[1] ) 
+    cb = matplotlib.colorbar.ColorbarBase( ax, cmap=cmap, norm=cb_norm, \
+                                        orientation='horizontal' ) # Creates the color bar in cb_axis
+    cb.solids.set_rasterized( True )
+    cb.solids.set_edgecolor( 'face' )
