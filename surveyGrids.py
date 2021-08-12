@@ -1510,8 +1510,12 @@ def ReadExoFOPProperties( forceDownload=False ):
     z['Comments'] = np.array( t[1:,cols=='Comments'].flatten() )
     for i in range(len(z['Comments'])):
         z['Comments'][i] = z['Comments'][i].replace('"','')
+    
+    y = {}
+    for i in range(len(z['TICID'])):
+        y[z['TICID'][i]] = [z['Priority'][i], z['Comments'][i]]
 
-    return z
+    return y
 
 def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True ):
     
@@ -1525,7 +1529,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
              SMFlag, 'Kamp', 'Pday', \
              'TstarK', 'loggstarCGS', 'RsRS', 'MsMS', \
              'MpValME', 'RpValRE', 'TeqK' ]
-    indices = []   
+  
     topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs,\
                                       ASCII=True)
     nAll = len( z['planetName'] )
@@ -1562,16 +1566,23 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     ixs = np.argsort( Dec_deg )
     for p in props:
         ASCII[p] = np.array( ASCII[p] )[ixs]
-    ticid = ASCII['TICID']
-    exoFOP = ReadExoFOPProperties()
-    # print(exoFOP)
-    indices = [i for i in range(len(exoFOP['TICID'])) \
-                if exoFOP['TICID'][i] in ticid]
-    # print(indices)
-    for p in ['Priority', 'Comments']:
-        ASCII[p] = np.array( exoFOP[p] )[indices]
-        props.append(p)
 
+    #Add exofop data to file:
+    exoFOP = ReadExoFOPProperties()
+    priority = []
+    comments = []
+    for i in ASCII['TICID']:
+        if i in exoFOP:
+            priority.append(exoFOP[i][0])
+            comments.append(exoFOP[i][1])
+        else:
+            priority.append(None)
+            comments.append(None)
+    ASCII['Priority'] = np.array(priority)
+    ASCII['Comments'] = np.array(comments)
+    for j in ['Priority', 'Comments']:
+        props.append(j)
+    
     # Correct missing Imags (probably most of them):
     if pysynphotImport==True:
         ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
