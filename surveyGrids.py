@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
-from . import Utils, processTargetLists
+from . import Utils, processTargetLists, downloadTargetLists
 from . import surveySetup
 #from astropy.io import ascii
 from astropy.table import Table
@@ -340,6 +340,10 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     RpLsig = z['RpLsigRE'][ixs]
     RpUsig = z['RpUsigRE'][ixs]
     TESS = np.array( z['TESS'][ixs], dtype=int )
+    plTess = pl[TESS>0]
+    plTess=list(plTess)
+    for i in range(len(plTess)):
+        plTess[i] = plTess[i].replace(' ', '')
 
     onames = {}
     
@@ -365,7 +369,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
                                     
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, titleStr=titleStr, \
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, titleStr=titleStr, \
                                dateStr=dateStr, survey=survey, RADecStr=RADecStr, HeatMap = HeatMap  )
     fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                horizontalalignment='left', verticalalignment='top' )
@@ -695,7 +699,7 @@ def addSignatureToAxis( ax ):
     return None
 
 
-def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
+def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr='', \
                    RADecStr='', dateStr='', wideFormat=True, survey={}, \
                    ASCII=False, HeatMap = True ):
     """
@@ -727,7 +731,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
                                    xLines, yLines, survey=survey, ASCII=True )
         return plList
     ax, SMstr = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                           xLines, yLines, survey=survey )
+                           xLines, yLines, plTess, survey=survey )
     for i in range( nT ):
         ax.plot( [xLines[i],xLines[i]], [yLines.min(),yLines.max()], '-', \
                  c=cgrid, zorder=1 )
@@ -804,7 +808,7 @@ def formatAxisTicks( ax ):
     return ax
 
 def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                xLines, yLines, survey={}, ASCII=False ):
+                xLines, yLines, plTess=None, survey={}, ASCII=False ):
 
     """
     Supplementary routine to graph planets and TOIs with top SM values in each grid section
@@ -873,6 +877,9 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                         else: # Black if PC
                             c = 'Black'
                             wt = 'normal'
+                        if plTess != None:
+                            if plStr.split(' ')[0] in plTess:
+                                wt = 'bold'
                         ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
                                  horizontalalignment='left', verticalalignment='center' )
                         ck = Utils.getStarColor( TstarK[ixs][k] )
@@ -1538,8 +1545,26 @@ def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0
 
     return  highestSMs[0]
             
+def ReadExoFOPProperties( forceDownload=False ):
+    
+    exoFOPpath = downloadTargetLists.ExoFopTOIs( forceDownload=forceDownload )
+    t = np.genfromtxt( exoFOPpath, dtype=str, delimiter=',', invalid_raise=False )
+    cols = t[0,:]
+    z = {}
+    z['TICID'] = np.array( t[1:,cols=='TIC ID'].flatten(), dtype='<U20' )
+    z['Priority'] = np.array( t[1:,cols=='Master'].flatten(), dtype='<U20' )
+    z['Comments'] = np.array( t[1:,cols=='Comments'].flatten() )
+    for i in range(len(z['Comments'])):
+        z['Comments'][i] = z['Comments'][i].replace('"','')
+    
+    y = {}
+    for i in range(len(z['TICID'])):
+        y[z['TICID'][i]] = [z['Priority'][i], z['Comments'][i]]
+
+    return y
 
 def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True ):
+    
     Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
     ifile = open( 'toiProperties.pkl', 'rb' )
     z0 = pickle.load( ifile )
@@ -1550,7 +1575,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
              SMFlag, 'Kamp', 'Pday', \
              'TstarK', 'loggstarCGS', 'RsRS', 'MsMS', \
              'MpValME', 'RpValRE', 'TeqK' ]
-    indices = []   
+  
     topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs,\
                                       ASCII=True)
     nAll = len( z['planetName'] )
@@ -1587,6 +1612,22 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     ixs = np.argsort( Dec_deg )
     for p in props:
         ASCII[p] = np.array( ASCII[p] )[ixs]
+
+    #Add exofop data to file:
+    exoFOP = ReadExoFOPProperties()
+    priority = []
+    comments = []
+    for i in ASCII['TICID']:
+        if i in exoFOP:
+            priority.append(exoFOP[i][0])
+            comments.append(exoFOP[i][1])
+        else:
+            priority.append(None)
+            comments.append(None)
+    ASCII['Priority'] = np.array(priority)
+    ASCII['Comments'] = np.array(comments)
+    for j in ['Priority', 'Comments']:
+        props.append(j)
     
     # Correct missing Imags (probably most of them):
     if pysynphotImport==True:
@@ -1601,7 +1642,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
                 Imag = Utils.convertMag( Jmag, TstarK, loggCGS, \
                                          inputMag='J', outputMag='I' )
                 ASCII['Imag'][ixs[i]] = Imag
-    col0 = 'Target'.rjust( 18 )
+    col0 = 'Target'.rjust( 18 ) 
     col1 = 'TICID'.rjust( 16 )
     col2 = 'RA'.center( 16 )
     col3 = 'Dec'.center( 14 )
@@ -1620,32 +1661,39 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     col12 = 'Mp(ME)'.rjust( 10 )
     col13 = 'Rp(RE)'.rjust( 10 )
     col14 = 'Teq(K)'.rjust( 10 )
-    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}\n'\
+    col15 = 'Priority'.center( 12 )
+    col16 = 'Comments'.ljust( 50 )
+    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}\n'\
            .format( col0, col1, col2, col3, \
                     col4a, col4b, col4c, col4d, col4e, \
                     col5, col6, col7, col8, col9, col10, \
-                    col11, col12, col13, col14 )
-    
+                    col11, col12, col13, col14, col15, col16 )
+
     ncol = [ 18, 15, 16, 15, 7, 7, 7, 7, 7, 10, 8, \
-             10, 10, 10, 10, 10, 10, 10, 10 ] # column width
+             10, 10, 10, 10, 10, 10, 10, 10, 12, 50 ] # column width
     ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1, 1, 1,  \
-              3,  0,  1, 1, 1,  1,  1, 0 ] # decimal places
-    ostr += '#{0}'.format( 198*'-' )
+              3,  0,  1, 1, 1,  1,  1, 0, 0, 0 ] # decimal places
+    ostr += '#{0}'.format( 323*'-' )
     m = len( props )
     def rowStr( i ):
         rstr = '\n  '
         for j in range( m ): # loop over each property
             k = props[j]
-            if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' ):
+            if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' )*(k!='Comments')*(k!='Priority'):
                 # numbers
                 rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+            elif (k=='Priority'):
+                rstr += '{0}'.format( ASCII[k][i] ).center( ncol[j] )
+            elif (k=='Comments'):
+                # numbers
+                rstr += '{0}'.format( ASCII[k][i] ).ljust( ncol[j] )
             else: # strings
                 rstr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
         return rstr
     for i in range( n ): # loop over each TOI
         rstr = rowStr( i )
         ostr += rstr
-        
+    # print(ostr)    
     # Write to file:
     oname = f'RVvaluesBy{SMFlag}.txt'
 
