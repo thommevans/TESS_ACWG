@@ -648,3 +648,31 @@ def HeatMapValues(TRange, RRange, TeqK, RpValRE, predTeqK, predRpVal):
     #Final value is ratio of fraction of TOIs to pred
     value = TOI_frac/pred_frac
     return value
+
+def Normalize(values, clip, scaled=True):
+    box_avg = np.average(values)
+    box_std = np.std(values)
+    box_values3 = list(values)
+    
+    for value in values:
+        if np.abs(value-box_avg) > 3*box_std:
+            box_values3.remove(value)
+        elif not np.isfinite(value):
+            box_values3.remove(value)
+
+    minVal = np.min(box_values3)
+    maxVal = np.max(box_values3)
+    box_norm = []
+    for value in values:
+        if not np.isfinite(value):
+            norm = 0.9999 #If zero TOIs in box, box gets colored white
+        elif value <= 0: #If TOI fraction < pred fraction, box colored cool
+            norm = 0.99*(value - minVal)/(0 - minVal)*0.5
+            if norm < 0:
+                norm = 0 
+        elif value > 0: #If TOI fraction > pred fraction, box colored warm
+            norm = 0.5 + 0.99*value/maxVal*0.5
+            if norm > 1:
+                norm = 0.99 
+        box_norm.append(norm)
+    return box_norm

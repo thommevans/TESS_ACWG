@@ -736,8 +736,29 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, cgrid=None, titleStr='', \
                  c=cgrid, zorder=1 )
     
     if HeatMap:
-        ax, val = addHeatMap(ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid)
-        addColorBar(axc, val)
+        # Creates a new custom colormap
+        cdict = {
+         'red':[    [0, 1, 204/255],
+                    [1/6, 204/255, 153/255],
+                    [1/2, 153/255, 1],
+                    [1, 1, 1]],
+
+         'green':[  [0, 1, 153/255],
+                    [1/6, 153/255, 204/255],
+                    [2/6, 204/255, 1],
+                    [4/6, 1, 204/255],
+                    [5/6, 204/255, 153/255],
+                    [0.999, 153/255, 1],
+                    [1, 1, 1]],
+                    
+        'blue':[    [0, 1, 1],
+                    [2/6, 1, 153/255],
+                    [0.999, 153/255, 1],
+                    [1, 1, 1]]
+        }
+        cmap = matplotlib.colors.LinearSegmentedColormap('testCmap', segmentdata=cdict, N=256)
+        ax, val = addHeatMap(ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid, cmap)
+        addColorBar(axc, val, cmap)
     
     formatAxisTicks( ax )
     ax.xaxis.set_ticks( xLines, minor=False )
@@ -1661,7 +1682,7 @@ def TeqK_ExoFOPvsKempton (Kempton, ExoFOP):
     fig.savefig( opathk )
     print('\n Saved: ', oname)
 
-def addHeatMap (ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid):
+def addHeatMap (ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid, cmap):
     """
     Adds a Heat Map to a figure based on fraction of planets/TOIs found in box compared to 
     those predicted by Barclay et al.
@@ -1681,45 +1702,33 @@ def addHeatMap (ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid):
                 TeqK, RpRE, predTeqK, predRpVal) # Calculates fraction of TOIs:fraction of pred in box
             boxes.append([[x, x, x+1, x+1], [y, y+1, y+1, y], boxn]) # Box coordinates and number
             box_values.append(box_value)
-            boxn +=1      
+            boxn +=1             
 
     box_values = np.array(box_values)
 
-    # Creates a new color map based on 'Oranges', using the first half of the map
-    CMapBig = plt.cm.get_cmap('Oranges', 512) 
-    cmap = matplotlib.colors.ListedColormap(CMapBig(np.linspace(0, 0.5, 256)))
+    box_values2 = []
+    for value in box_values:
+        if value != 0:
+            box_values2.append(np.log2(value))
+        else:
+            box_values2.append(np.nan)
 
-    # Normalizes the box values linearly, removing outliers and setting their values to 0 or 1
-    box_avg = np.average(box_values)
-    box_std = np.std(box_values)
-    box_values2 = list(box_values[:])
-    for value in box_values2:
-        if np.abs(value-box_avg) > 3*box_std:
-            box_values2.remove(value)
-
-    minVal = np.min(box_values2)
-    maxVal = np.max(box_values2)
-    box_norm = (box_values - minVal)/(maxVal-minVal)
-    for i in range(len(box_norm)):
-        if box_norm[i] < 0:
-            box_norm[i] = 0
-        elif box_norm[i] > 1:
-            box_norm[i] = 1
-
+    #Normalizes the boxes. TOI < pred and TOI > pred are normalized separately into [0, 0.5] and [0.5, 1]
+    box_norm = Utils.Normalize(box_values2, True)
+    
     # Colors in the boxes
     for box in boxes:
         box_color = cmap(box_norm[box[2]])
         ax.fill(box[0], box[1], color=box_color, zorder = 0)
     
-    return ax, (minVal, maxVal)
+    return ax, np.log2(np.max(box_values))
 
-def addColorBar(ax, val):
-    # Creates a new color map based on 'Oranges', using the first half of the map
-    CMapBig = plt.cm.get_cmap('Oranges', 512) 
-    cmap = matplotlib.colors.ListedColormap(CMapBig(np.linspace(0, 0.5, 256)))
+def addColorBar(ax, val, cmap):
     tick_fs = 12
     ax.tick_params( labelsize=tick_fs ) # Changes the font size of tick marks
-    cb_norm = matplotlib.colors.Normalize( vmin=val[0], vmax=val[1] ) 
+    cb_norm = matplotlib.colors.Normalize( vmin=-val, vmax=val )
+    # Only right half of colorbar properly normalized. Unsure how to have both consistent with figure
+    # normalization without changing so that all data normalized together
     cb = matplotlib.colorbar.ColorbarBase( ax, cmap=cmap, norm=cb_norm, \
                                         orientation='horizontal' ) # Creates the color bar in cb_axis
     cb.solids.set_rasterized( True )
