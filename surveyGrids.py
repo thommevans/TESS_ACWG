@@ -203,17 +203,10 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
     if onlyPCs == True:
         toiNote = 'Only TOIs with "PC" TFOPWG Disposition are displayed\n'
-    
-    if HeatMap:
-        toiNote += 'Masses estimated from empirical relation \n(adapted from Chen & Kipping 2017)'
-        fig2.text( 0.98, 0.9, toiNote, \
-                c='black', fontsize=14, horizontalalignment='right', \
-                verticalalignment='bottom' )
-    else:
-        toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
-        fig2.text( 0.08, 0.91-0.10, toiNote, \
-                c='black', fontsize=14, horizontalalignment='left', \
-                verticalalignment='bottom' )
+    toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
+    fig2.text( 0.08, 0.91-0.10, toiNote, \
+            c='black', fontsize=14, horizontalalignment='left', \
+            verticalalignment='bottom' )
 
     if addSignature==True:
         for ax in [ax2]:
@@ -894,8 +887,8 @@ def generateAxisGrid( xlim=[0,3100], ylim=[0,26], wideFormat=False, whichType='R
               rotation=0, horizontalalignment='left', verticalalignment='bottom' )
     subtitle_fs = 14
     if HeatMap:
-        label_fs = 12
-        cb_text = 'Fraction of TOIs vs Fraction of Predicted Planets'
+        label_fs = 14
+        cb_text = 'Fraction of TOIs vs Fraction of Predicted'
         axc.text( 0, 2, cb_text, fontsize=label_fs, \
                 horizontalalignment='left', verticalalignment='center', \
                 rotation=0, transform=axc.transAxes ) # Creates the color bar label
@@ -937,8 +930,10 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap =
         addStellarSpectralTypeLegend( axLegend, ms=8, text_fs=10 )
     else:
         axLegend = None
+
     if HeatMap:
-        axc = fig.add_axes([xlow+0.02, ylow2, axw2, 0.015*axh]) #Colorbar axis
+        axc = fig.add_axes([xlow2, ylow2+0.125, axw2, 0.015*axh]) #Colorbar axis
+
     ax = formatAxes( ax, whichType=whichType )
     label_fs = 16
     if whichType=='RpTeq':
@@ -1722,7 +1717,7 @@ def addColorBar(ax, val):
     # Creates a new color map based on 'Oranges', using the first half of the map
     CMapBig = plt.cm.get_cmap('Oranges', 512) 
     cmap = matplotlib.colors.ListedColormap(CMapBig(np.linspace(0, 0.5, 256)))
-    tick_fs = 9
+    tick_fs = 12
     ax.tick_params( labelsize=tick_fs ) # Changes the font size of tick marks
     cb_norm = matplotlib.colors.Normalize( vmin=val[0], vmax=val[1] ) 
     cb = matplotlib.colorbar.ColorbarBase( ax, cmap=cmap, norm=cb_norm, \
