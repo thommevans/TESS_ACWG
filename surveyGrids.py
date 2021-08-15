@@ -242,7 +242,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
         opathsPNG[k] = opathk_png
         print( '{0}\n{1}'.format( opathk, opathk_png ) )
         print( 'RADecStr = {0}'.format( RADecStr ) )
-    plt.show()
+    
     return opathsPDF, opathsPNG
     
     
