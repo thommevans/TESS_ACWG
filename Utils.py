@@ -132,6 +132,16 @@ def JHKVmags( TICIDs ):
     
     return magsDict
 
+
+def tickLogFormat( y, pos ):
+    # Find the number of decimal places required
+    decimalplaces = int(np.ceil(np.maximum(-np.log10(y),0))) # =0 for numbers >=1
+    # Insert that number into a format string
+    formatstring = '{{:.{:1d}f}}'.format(decimalplaces)
+    # Return the formatted tick label
+    return formatstring.format(y)
+
+
 def testWASP121():
     Vmag = 10.51
     Jmag = 9.625
