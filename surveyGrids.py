@@ -1551,15 +1551,15 @@ def ReadExoFOPProperties( forceDownload=False ):
     t = np.genfromtxt( exoFOPpath, dtype=str, delimiter=',', invalid_raise=False )
     cols = t[0,:]
     z = {}
-    z['TICID'] = np.array( t[1:,cols=='TIC ID'].flatten(), dtype='<U20' )
+    z['TOI'] = np.array( t[1:,cols=='TOI'].flatten(), dtype='<U20' )
     z['Priority'] = np.array( t[1:,cols=='Master'].flatten(), dtype='<U20' )
     z['Comments'] = np.array( t[1:,cols=='Comments'].flatten() )
     for i in range(len(z['Comments'])):
         z['Comments'][i] = z['Comments'][i].replace('"','')
     
     y = {}
-    for i in range(len(z['TICID'])):
-        y[z['TICID'][i]] = [z['Priority'][i], z['Comments'][i]]
+    for i in range(len(z['TOI'])):
+        y[z['TOI'][i]] = [z['Priority'][i], z['Comments'][i]]
 
     return y
 
@@ -1617,7 +1617,13 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     exoFOP = ReadExoFOPProperties()
     priority = []
     comments = []
-    for i in ASCII['TICID']:
+    
+    TOI = list(ASCII['planetName'])
+
+    for i,j in enumerate(TOI):
+        k = j.split('-')[1]
+        TOI[i] = k.split('(')[0]
+    for i in TOI:
         if i in exoFOP:
             priority.append(exoFOP[i][0])
             comments.append(exoFOP[i][1])
