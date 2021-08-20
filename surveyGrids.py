@@ -892,8 +892,8 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
 def generateAxisScatter( xlim=[0,3100], ylim=[0,26], wideFormat=False, \
                          whichType='RpTeq', titleStr='', DecStr='', \
                          showLegend=True ):
-    fig, ax, axLegend = generateAxes( wideFormat=wideFormat, whichType=whichType, \
-                                      showLegend=showLegend )
+    fig, ax, axLegend, axc = generateAxes( wideFormat=wideFormat, whichType=whichType, \
+                                           showLegend=showLegend )
     title_fs = 18
     toplineY = 0.98
     fig.text( 0.02, toplineY-0.02, titleStr, fontsize=title_fs, weight='heavy', \
@@ -905,10 +905,10 @@ def generateAxisGrid( xlim=[0,3100], ylim=[0,26], wideFormat=False, whichType='R
                       RADecStr='', titleStr='', showLegend=True, HeatMap = True ):
     if HeatMap:
         fig, ax, axLegend, axc = generateAxes( wideFormat=wideFormat, whichType=whichType, \
-                                        showLegend=showLegend, HeatMap=HeatMap )
+                                               showLegend=showLegend, HeatMap=HeatMap )
     else:
-        fig, ax, axLegend = generateAxes( wideFormat=wideFormat, whichType=whichType, \
-                                        showLegend=showLegend, HeatMap=HeatMap )
+        fig, ax, axLegend, axc = generateAxes( wideFormat=wideFormat, whichType=whichType, \
+                                               showLegend=showLegend, HeatMap=HeatMap )
     title_fs = 18
     toplineY = 0.98
     fig.text( 0.02, toplineY-0.02, titleStr, fontsize=title_fs, weight='heavy', \
@@ -988,7 +988,7 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap =
     if HeatMap:
         return fig, ax, axLegend, axc
     else:
-        return fig, ax, axLegend
+        return fig, ax, axLegend, None
 
 
 def formatAxes( ax, whichType='RpTeq', xlim='default', ylim='default', \
