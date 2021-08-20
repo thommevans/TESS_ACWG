@@ -86,7 +86,7 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag='TSM', HeatMap
                                           showNeptuneRadius=showNeptuneRadius, \
                                           showJupiterRadius=showJupiterRadius, \
                                           survey=survey, addSignature=addSignature, \
-                                          SMFlag = SMFlag, HeatMap = HeatMap )
+                                          SMFlag=SMFlag, HeatMap=HeatMap )
     for f in figPaths: # PDFs and PNGs
         for k in list( f.keys() ):
             fnew = f[k].replace( 'Confirmed_', 'Confirmed_{0}_'\
@@ -98,7 +98,8 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag='TSM', HeatMap
     return None
 
 
-def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', onlyPCs = False, HeatMap = True ):
+def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag='TSM', \
+          onlyPCs=False, HeatMap=False ):
     """
     """
     wideFormat = True
@@ -126,8 +127,8 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag = 'TSM', 
                                              addSignature=addSignature, survey=survey, \
                                              RAMin_hr=RA[0], RAMax_hr=RA[1], \
                                              DecMin_deg=i[1], DecMax_deg=i[2],
-                                             SMFlag = SMFlag, onlyPCs = onlyPCs, \
-                                             HeatMap = HeatMap )
+                                             SMFlag=SMFlag, onlyPCs=onlyPCs, \
+                                             HeatMap=HeatMap )
             opaths[i[0]][r] = []
             for f in figPaths: # PDFs and PNGs
                 for k in list( f.keys() ):
@@ -153,7 +154,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
                           addSignature=False, survey={}, \
                           RAMin_hr=None, RAMax_hr=None, \
                           DecMin_deg=None, DecMax_deg=None, \
-                          SMFlag='TSM', onlyPCs=False, ASCII=False, HeatMap = True ):
+                          SMFlag='TSM', onlyPCs=False, ASCII=False, HeatMap=False ):
     """
     TOIs that have not been confirmed.
     """
@@ -191,13 +192,13 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
     if ASCII:
         plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
-                                       titleStr=titleStr, dateStr=dateStr, \
-                                       survey=survey, RADecStr=RADecStr, ASCII=ASCII, \
-                                       HeatMap=HeatMap )
+                                titleStr=titleStr, dateStr=dateStr, \
+                                survey=survey, RADecStr=RADecStr, ASCII=ASCII, \
+                                HeatMap=HeatMap )
         return plList
     fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
-                                       titleStr=titleStr, dateStr=dateStr, \
-                                       survey=survey, RADecStr=RADecStr, HeatMap = HeatMap )
+                               titleStr=titleStr, dateStr=dateStr, \
+                               survey=survey, RADecStr=RADecStr, HeatMap=HeatMap )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
@@ -314,7 +315,7 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Fa
 def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True, \
                                survey={}, addSignature=False, showGrid=True, \
                                showNeptuneRadius=False, showJupiterRadius=False, \
-                               SMFlag='TSM', HeatMap = True ):
+                               SMFlag='TSM', HeatMap=False ):
     """
     
     """
@@ -348,7 +349,8 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     onames = {}
     
     # Radius-temperature plot for all planets with well-measured mass:
-    fig1a, ax1a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, applySMcuts=False, \
+    fig1a, ax1a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS,
+                                    applySMcuts=False, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr, \
                                     indicateTESS=False, dateStr=dateStr, \
@@ -358,7 +360,8 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     
     # Radius-temperature plot for all planets with well-measured mass
     # and SM cuts applied:
-    fig1b, ax1b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, applySMcuts=True, \
+    fig1b, ax1b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, \
+                                    applySMcuts=True, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr, \
                                     indicateTESS=False, dateStr=dateStr, \
@@ -369,21 +372,27 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
                                     
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, titleStr=titleStr, \
-                               dateStr=dateStr, survey=survey, RADecStr=RADecStr, HeatMap = HeatMap  )
+    extraNotes = 'TESS discoveries shown in bold font'
+    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, \
+                               titleStr=titleStr, extraNotes=extraNotes, \
+                               dateStr=dateStr, survey=survey, \
+                               RADecStr=RADecStr, HeatMap=HeatMap  )
     fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                horizontalalignment='left', verticalalignment='top' )
+    
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     # Scatter plots without the grid:
-    fig3a, ax3a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, applySMcuts=False, \
+    fig3a, ax3a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, \
+                                    applySMcuts=False, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr, \
                                     indicateTESS=True, dateStr=dateStr, \
                                     showNeptuneRadius=showNeptuneRadius, \
                                     showJupiterRadius=showJupiterRadius )
     onames['3a'] = '{0}_allPlanets_showsTESS.pdf'.format( ostr )
-    fig3b, ax3b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, applySMcuts=True, \
+    fig3b, ax3b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, \
+                                    applySMcuts=True, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr,
                                     indicateTESS=True, dateStr=dateStr, \
@@ -432,15 +441,18 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
                                addSignature=False, SMFlag='TSM' ):
     """
     Focusing on TESS predicted yield, not worrying about survey grid.
-    Currently unused, out of date. In the middle of being repurposed to create plots of predicted planets
+    Currently unused, out of date. In the middle of being repurposed 
+    to create plots of predicted planets
     """
 
     z = readPredictedProperties(SMFlag = SMFlag)
     ostr = 'predictedTESS'
     
-    survey = { 'surveyName':'ACWG', 'obsSample':'PublishedMassesOnly', 'framework':'ACWG', \
-           'gridEdges':surveySetup.gridEdges, 'thresholdTSM':surveySetup.thresholdTSM, \
-           'thresholdESM':surveySetup.thresholdESM, 'preCuts':surveySetup.preCutsConfirmed }
+    survey = { 'surveyName':'ACWG', 'obsSample':'PublishedMassesOnly', \
+               'framework':'ACWG', 'gridEdges':surveySetup.gridEdges, \
+               'thresholdTSM':surveySetup.thresholdTSM, \
+               'thresholdESM':surveySetup.thresholdESM, \
+               'preCuts':surveySetup.preCutsConfirmed }
 
     n0 = len( z['RsRS'] )
 
@@ -455,12 +467,14 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
     TESS = [0 for i in range(len(ixs))]
     pl = ['PredictedPlanet-{0}'.format(str(i)) for i in range(len(ixs))]
 
-    dateStr = processTargetLists.getDateStr( 'predictedProperties_v2.pkl', whichList='Predicted' )
+    dateStr = processTargetLists.getDateStr( 'predictedProperties_v2.pkl', \
+                                             whichList='Predicted' )
 
     # Radius-temperature plot for all planets with well-measured mass:    
     titleStr = 'Top ranked predicted planets'
     
-    fig0a, ax0a = plotTeqRpScatter( pl, Teq[ixs], RpVal[ixs], Ts[ixs], ('SMFlag', SM[ixs]), \
+    fig0a, ax0a = plotTeqRpScatter( pl, Teq[ixs], RpVal[ixs], Ts[ixs], \
+                                    ('SMFlag', SM[ixs]), \
                                     TESS[ixs], applyTSMcuts=False, ms=6, alpha=1, \
                                     starColors=True, showSolarSystem=showSolarSystem, \
                                     showStellarTrack=showStellarTrack, \
@@ -496,7 +510,8 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
         
     fig0a.savefig( opaths['0a'] )
     
-    fig0b, ax0b = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], ('SMFlag', SM[ixs]), \
+    fig0b, ax0b = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], \
+                                    ('SMFlag', SM[ixs]), \
                                     TESS[ixs], applyTSMcuts=False, ms=6, alpha=1, \
                                     starColors=True, showSolarSystem=showSolarSystem, \
                                     showStellarTrack=showStellarTrack, \
@@ -513,7 +528,8 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
  # Same as previous but with low alpha value for known planets:
     titleStr = 'Predicted TESS planets' 
     
-    fig1, ax1 = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], ('SMFlag', SM[ixs]), \
+    fig1, ax1 = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], \
+                                  ('SMFlag', SM[ixs]), \
                                   TESS[ixs], applyTSMcuts=False, ms=6, alpha=0.3, \
                                   starColors=True, showSolarSystem=showSolarSystem, \
                                   showStellarTrack=showStellarTrack, \
@@ -534,7 +550,8 @@ def transmissionPredictedTESS( showSolarSystem=True, wideFormat=False, \
     fig1.savefig( opaths['1b'] )
     
     # Radius-temperature plot for all planets with well-measured mass:
-    fig2, ax2 = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], ('SMFlag', SM[ixs]), \
+    fig2, ax2 = plotTeqRpScatter( pl[ixs], Teq[ixs], RpVal[ixs], Ts[ixs], \
+                                  ('SMFlag', SM[ixs]), \
                                   TESS[ixs], applyTSMcuts=False, ms=3, alpha=1, \
                                   starColors=False, showSolarSystem=showSolarSystem, \
                                   showStellarTrack=showStellarTrack, \
@@ -701,7 +718,7 @@ def addSignatureToAxis( ax ):
 
 def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr='', \
                    RADecStr='', dateStr='', wideFormat=True, survey={}, \
-                   ASCII=False, HeatMap = True ):
+                   ASCII=False, HeatMap=True, extraNotes=None ):
     """
     Plots grid of planets and TOIs by TeqK and RpRE
     SM: (TSM or ESM, list of float)
@@ -712,8 +729,9 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
         
     if not ASCII:
         if HeatMap:
-            fig, ax, ax2, axc = generateAxisGrid( wideFormat=wideFormat, titleStr=titleStr, \
-                                            RADecStr=RADecStr, HeatMap=HeatMap )
+            fig, ax, ax2, axc = generateAxisGrid( wideFormat=wideFormat, \
+                                                  titleStr=titleStr, \
+                                                  RADecStr=RADecStr, HeatMap=HeatMap )
         else:
             fig, ax, ax2 = generateAxisGrid( wideFormat=wideFormat, titleStr=titleStr, \
                                             RADecStr=RADecStr, HeatMap=HeatMap )
@@ -741,26 +759,23 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
     
     if HeatMap:
         # Creates a new custom colormap
-        cdict = {
-         'red':[    [0, 1, 204/255],
-                    [1/6, 204/255, 153/255],
-                    [1/2, 153/255, 1],
-                    [1, 1, 1]],
-
-         'green':[  [0, 1, 153/255],
-                    [1/6, 153/255, 204/255],
-                    [2/6, 204/255, 1],
-                    [4/6, 1, 204/255],
-                    [5/6, 204/255, 153/255],
-                    [0.999, 153/255, 1],
-                    [1, 1, 1]],
-                    
-        'blue':[    [0, 1, 1],
-                    [2/6, 1, 153/255],
-                    [0.999, 153/255, 1],
-                    [1, 1, 1]]
-        }
-        cmap = matplotlib.colors.LinearSegmentedColormap('testCmap', segmentdata=cdict, N=256)
+        cdict = { 'red':[    [0, 1, 204/255],
+                             [1/6, 204/255, 153/255],
+                             [1/2, 153/255, 1],
+                             [1, 1, 1]],                
+                  'green':[  [0, 1, 153/255],
+                             [1/6, 153/255, 204/255],
+                             [2/6, 204/255, 1],
+                             [4/6, 1, 204/255],
+                             [5/6, 204/255, 153/255],
+                             [0.999, 153/255, 1],
+                             [1, 1, 1]],                    
+                  'blue':[    [0, 1, 1],
+                              [2/6, 1, 153/255],
+                              [0.999, 153/255, 1],
+                              [1, 1, 1]] }
+        cmap = matplotlib.colors.LinearSegmentedColormap( 'testCmap', \
+                                                          segmentdata=cdict, N=256 )
         ax, val = addHeatMap(ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid, cmap)
         addColorBar(axc, val, cmap)
     
@@ -780,6 +795,8 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
    
     otherNotes = '{0} values are listed in square brackets \n'.format( SM[0] )   
     otherNotes += 'Asterisks indicate top-5 predicted (Barclay et al., 2018)'.format(SM[0])
+    if extraNotes is not None:
+        otherNotes += '\n{0}'.format( extraNotes )
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
    
@@ -902,7 +919,7 @@ def generateAxisScatter( xlim=[0,3100], ylim=[0,26], wideFormat=False, \
 
 
 def generateAxisGrid( xlim=[0,3100], ylim=[0,26], wideFormat=False, whichType='RpTeq', \
-                      RADecStr='', titleStr='', showLegend=True, HeatMap = True ):
+                      RADecStr='', titleStr='', showLegend=True, HeatMap=False ):
     if HeatMap:
         fig, ax, axLegend, axc = generateAxes( wideFormat=wideFormat, whichType=whichType, \
                                                showLegend=showLegend, HeatMap=HeatMap )
@@ -927,7 +944,7 @@ def generateAxisGrid( xlim=[0,3100], ylim=[0,26], wideFormat=False, whichType='R
         return fig, ax, axLegend
 
 
-def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap = True ):
+def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap=False ):
     if wideFormat==False:
         fig = plt.figure( figsize=[11,9] )
         xlow = 0.09
