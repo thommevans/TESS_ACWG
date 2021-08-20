@@ -75,7 +75,7 @@ def quickCycle1():
     # pdb.set_trace()
 
 
-def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM', HeatMap = True ):
+def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag='TSM', HeatMap=False ):
     """
     """
     wideFormat = True
