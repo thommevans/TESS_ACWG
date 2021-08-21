@@ -1561,6 +1561,58 @@ def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0
             highestSMs.sort()
 
     return  highestSMs[0]
+
+def SMRepeats( SMFlag = 'ESM', survey = {} ):
+    
+    data = pickle.load(open('toiProperties.pkl','rb'))['allVals']
+    tic = data['TICID']
+    RpRE = data['RpValRE']
+    plName = data['planetName']
+    ESM = data['ESM']
+    TSM = data['TSM']
+    
+    topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag,\
+                                       ASCII=True )
+    for i, j in enumerate( topRanked ):
+        ix = j.find(' ')
+        topRanked[i] = j[:ix]
+    if SMFlag == 'ESM':
+        SM = ESM
+    else:
+        SM = TSM
+        
+    namesToTIC = {}
+    for i,j in enumerate( plName ):
+        namesToTIC[j, SM[i], RpRE[i]] = tic[i]
+        
+    TICtoNames = {}
+    for key, value in namesToTIC.items():
+           if value in TICtoNames:
+               TICtoNames[value].append(key)
+           else:
+              TICtoNames[value]=[key]
+              
+    bestSMs = {}
+    for key, value in TICtoNames.items():  
+        bestSMs[key] = []
+        if len( value ) > 1:
+            for l in value:
+                if l[2] > 0:
+                    name = None
+                    if SMFlag == 'ESM':
+                        if l[1] > surveySetup.thresholdESM(l[2])[0]:
+                            name = l[0]
+                    else:
+                        if l[1] > surveySetup.thresholdTSM(l[2])[0]:
+                            name = l[0]
+                    if name in topRanked:
+                        name = f'{l[0]}*'
+                    if name != None:
+                        bestSMs[key].append(name)
+        if len( bestSMs[key] ) < 2:
+            del( bestSMs[key] )
+            
+    return bestSMs
             
 def ReadExoFOPProperties( forceDownload=False ):
     
@@ -1580,7 +1632,8 @@ def ReadExoFOPProperties( forceDownload=False ):
 
     return y
 
-def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True ):
+def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=False, \
+                multTIC = False):
     
     Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
     ifile = open( 'toiProperties.pkl', 'rb' )
@@ -1598,6 +1651,15 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
+    
+    if multTIC:
+        topRanked = []
+        for i in list( SMRepeats(SMFlag=SMFlag, survey=survey ).values()):
+            for j in i:
+                topRanked.append(j)
+        nTop = len(topRanked)
+        topFivePredicted = False
+
     topRankedIxs = np.zeros( nTop, dtype=int )
     for i in range( nTop ):
         ixName = topRanked[i].rfind( ')' )
@@ -1613,6 +1675,8 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
                 topToPrintIxs += [ ix ]
     else:
         topToPrintIxs = topRankedIxs
+    
+    print(topToPrintIxs)
     n = len( topToPrintIxs )
     
     # Dictionary of properties for top-ranked to be written to ASCII output:
@@ -1719,11 +1783,13 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=True
     # print(ostr)    
     # Write to file:
     oname = f'RVvaluesBy{SMFlag}.txt'
-
-    if onlyPCs == True:
-        oname = oname.replace( '.txt', '_onlyPCs.txt' )
-    if topFivePredicted==True:
-        oname = oname.replace( '.txt', '_topPredicted.txt' )
+    if multTIC == True:
+        oname = oname.replace('.txt', '_Multis.txt')
+    else:
+        if onlyPCs == True:
+            oname = oname.replace( '.txt', '_onlyPCs.txt' )
+        if topFivePredicted==True:
+            oname = oname.replace( '.txt', '_topPredicted.txt' )
     odir = os.path.join( os.getcwd(), 'ASCII' )
     if os.path.isdir( odir )==False:
         os.makedirs( odir )
