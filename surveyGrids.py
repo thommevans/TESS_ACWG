@@ -747,7 +747,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
     if ASCII:
         plList = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                                    xLines, yLines, survey=survey, ASCII=True )
-        return plList
+        return plList, dateStr
     ax, SMstr = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                            xLines, yLines, plTess, survey=survey )
     for i in range( nT ):
@@ -1633,7 +1633,7 @@ def ReadExoFOPProperties( forceDownload=False ):
     return y
 
 def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=False, \
-                multTIC = False):
+                 multTIC=False ):
     
     Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
     ifile = open( 'toiProperties.pkl', 'rb' )
@@ -1646,8 +1646,8 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=Fals
              'TstarK', 'loggstarCGS', 'RsRS', 'MsMS', \
              'MpValME', 'RpValRE', 'TeqK' ]
   
-    topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, onlyPCs=onlyPCs,\
-                                      ASCII=True)
+    topRanked, dateStr = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, \
+                                               onlyPCs=onlyPCs, ASCII=True )
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
@@ -1750,17 +1750,17 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=Fals
     col14 = 'Teq(K)'.rjust( 10 )
     col15 = 'Priority'.center( 12 )
     col16 = 'Comments'.ljust( 50 )
-    ostr = '# {0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}\n'\
-           .format( col0, col1, col2, col3, \
-                    col4a, col4b, col4c, col4d, col4e, \
-                    col5, col6, col7, col8, col9, col10, \
-                    col11, col12, col13, col14, col15, col16 )
-
+    ostr = '# TOIs accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
+    ostr += '{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}'\
+            .format( col0, col1, col2, col3, \
+                     col4a, col4b, col4c, col4d, col4e, \
+                     col5, col6, col7, col8, col9, col10, \
+                     col11, col12, col13, col14, col15, col16 )
     ncol = [ 18, 15, 16, 15, 7, 7, 7, 7, 7, 10, 8, \
              10, 10, 10, 10, 10, 10, 10, 10, 12, 50 ] # column width
     ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1, 1, 1,  \
               3,  0,  1, 1, 1,  1,  1, 0, 0, 0 ] # decimal places
-    ostr += '#{0}'.format( 323*'-' )
+    ostr += '\n#{0}'.format( 323*'-' )
     m = len( props )
     def rowStr( i ):
         rstr = '\n  '
