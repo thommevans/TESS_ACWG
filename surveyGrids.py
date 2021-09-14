@@ -315,12 +315,13 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Fa
 def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True, \
                                survey={}, addSignature=False, showGrid=True, \
                                showNeptuneRadius=False, showJupiterRadius=False, \
-                               SMFlag='TSM', HeatMap=False ):
+                               SMFlag='TSM', HeatMap=False, ASCII=False ):
     """
     
     """
     z, dateStr = readConfirmedProperties( ipath=ipath, SMFlag = SMFlag )
     ostr = 'Confirmed'
+    print
 
     # Not applying Dec restrictions to Confirmed planets for now:
     #DecStr, DecMin_deg, DecMax_deg = processDecRestriction( None, None )
@@ -349,36 +350,43 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     onames = {}
     
     # Radius-temperature plot for all planets with well-measured mass:
-    fig1a, ax1a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS,
-                                    applySMcuts=False, \
-                                    wideFormat=wideFormat, survey=survey, \
-                                    showGrid=showGrid, titleStr=titleStr, \
-                                    indicateTESS=False, dateStr=dateStr, \
-                                    showNeptuneRadius=showNeptuneRadius, \
-                                    showJupiterRadius=showJupiterRadius )
-    onames['1a'] = '{0}_allPlanets.pdf'.format( ostr )
-    
-    # Radius-temperature plot for all planets with well-measured mass
-    # and SM cuts applied:
-    fig1b, ax1b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, \
-                                    applySMcuts=True, \
-                                    wideFormat=wideFormat, survey=survey, \
-                                    showGrid=showGrid, titleStr=titleStr, \
-                                    indicateTESS=False, dateStr=dateStr, \
-                                    showNeptuneRadius=showNeptuneRadius, \
-                                    showJupiterRadius=showJupiterRadius )
-    
-    onames['1b'] = '{0}_{1}cutsApplied.pdf'.format( ostr, SMFlag )
-                                    
+    if not ASCII:
+        fig1a, ax1a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS,
+                                        applySMcuts=False, \
+                                        wideFormat=wideFormat, survey=survey, \
+                                        showGrid=showGrid, titleStr=titleStr, \
+                                        indicateTESS=False, dateStr=dateStr, \
+                                        showNeptuneRadius=showNeptuneRadius, \
+                                        showJupiterRadius=showJupiterRadius )
+        onames['1a'] = '{0}_allPlanets.pdf'.format( ostr )
 
-    # Radius-temperature grid plot listing the top-ranked planets in each cell:
-    extraNotes = 'TESS discoveries shown in bold font'
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, \
-                               titleStr=titleStr, extraNotes=extraNotes, \
-                               dateStr=dateStr, survey=survey, \
-                               RADecStr=RADecStr, HeatMap=HeatMap  )
-    fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
-               horizontalalignment='left', verticalalignment='top' )
+        # Radius-temperature plot for all planets with well-measured mass
+        # and SM cuts applied:
+        fig1b, ax1b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, \
+                                        applySMcuts=True, \
+                                        wideFormat=wideFormat, survey=survey, \
+                                        showGrid=showGrid, titleStr=titleStr, \
+                                        indicateTESS=False, dateStr=dateStr, \
+                                        showNeptuneRadius=showNeptuneRadius, \
+                                        showJupiterRadius=showJupiterRadius )
+
+        onames['1b'] = '{0}_{1}cutsApplied.pdf'.format( ostr, SMFlag )
+
+
+        # Radius-temperature grid plot listing the top-ranked planets in each cell:
+        extraNotes = 'TESS discoveries shown in bold font'
+        fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, \
+                                   titleStr=titleStr, extraNotes=extraNotes, \
+                                   dateStr=dateStr, survey=survey, \
+                                   RADecStr=RADecStr, HeatMap=HeatMap  )
+        fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
+                   horizontalalignment='left', verticalalignment='top' )
+    else:
+        plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, \
+                                titleStr=titleStr, \
+                                dateStr=dateStr, survey=survey, ASCII=ASCII, \
+                                RADecStr=RADecStr, HeatMap=HeatMap  )
+        return plList
     
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
@@ -1790,6 +1798,179 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=Fals
             oname = oname.replace( '.txt', '_onlyPCs.txt' )
         if topFivePredicted==True:
             oname = oname.replace( '.txt', '_topPredicted.txt' )
+    odir = os.path.join( os.getcwd(), 'ASCII' )
+    if os.path.isdir( odir )==False:
+        os.makedirs( odir )
+    opath = os.path.join( odir, oname )
+
+    ofile = open( opath, 'w' )
+    ofile.write( ostr )
+    ofile.close()
+    print( '\nSaved:\n{0}'.format( opath ) )
+
+    return opath
+
+def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
+    """
+    Would be better to merge this in single routine for TOIs and Confirmed.
+    """
+    Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
+    ifile = open( ipath, 'rb' )
+    z0 = pickle.load( ifile )
+    ifile.close()
+    z = z0['allVals']
+    # TODO = Need to add RA, Dec, loggstarCGS to confirmedProperties.pkl
+    props = ['planetName', \
+             'Vmag', 'Jmag', 'Hmag', 'Kmag',\
+             SMFlag, 'Kamp', 'Pday', 'TstarK', 'RsRS', 'MsMS', \
+             'MpValME', 'MpLowErrME', 'MpUppErrME', 'RpValRE', 'TeqK' ]
+  
+    topRanked, dateStr = transmissionGridConfirmed( survey=survey, SMFlag=SMFlag, \
+                                                    ASCII=True )
+    nAll = len( z['planetName'] )
+    ixsAll = np.arange( nAll )
+    nTop = len( topRanked )
+    
+    #if multTIC:
+    #    topRanked = []
+    #    for i in list( SMRepeats(SMFlag=SMFlag, survey=survey ).values()):
+    #        for j in i:
+    #            topRanked.append(j)
+    #    nTop = len(topRanked)
+    #    topFivePredicted = False
+
+    for i in range( nAll ):
+        z['planetName'][i] = z['planetName'][i].replace( ' ', '' )
+    
+    topRankedIxs = np.zeros( nTop, dtype=int )
+    for i in range( nTop ):
+        ixName = topRanked[i].rfind( '[' ) # DIFFERENT TO TOIs!
+        ix = int( ixsAll[z['planetName']==topRanked[i][:ixName-1]] )
+        topRankedIxs[i] = ix
+        if topRanked[i][-1]=='*':
+            z['planetName'][ix] = '{0}*'.format( z['planetName'][ix] )
+    #if topFivePredicted:
+    #    topToPrintIxs = []
+    #    for i in range( nTop ):
+    #        ix = topRankedIxs[i]
+    #        if z['planetName'][ix][-1]=='*':
+    #            topToPrintIxs += [ ix ]
+    #else:
+    #    topToPrintIxs = topRankedIxs
+    topToPrintIxs = topRankedIxs        
+    
+    print(topToPrintIxs)
+    n = len( topToPrintIxs )
+    
+    # Dictionary of properties for top-ranked to be written to ASCII output:
+    ASCII = {} 
+    for p in props:
+        ASCII[p] = z[p][topToPrintIxs]
+    #RA_deg = z['RA_deg'][topToPrintIxs]
+    #Dec_deg = z['Dec_deg'][topToPrintIxs]
+
+    # TO ADD BACK IN ONCE DEC_DEG ADDED BACK IN...
+    # Sort by declination coordinate:
+    #ixs = np.argsort( ASCII['Dec_deg'] )
+    #ixs = np.argsort( Dec_deg )
+    #for p in props:
+    #    ASCII[p] = np.array( ASCII[p] )[ixs]
+
+    #Add exofop data to file:
+    #exoFOP = ReadExoFOPProperties()
+    #priority = []
+    #comments = []
+    
+    pl = list(ASCII['planetName'])
+
+    for i,j in enumerate(pl):
+        try:
+            k = j.split('-')[1]
+        except:
+            continue
+        #TOI[i] = k.split('(')[0]
+    #for i in pl:
+    #    if i in exoFOP:
+    #        priority.append(exoFOP[i][0])
+    #        comments.append(exoFOP[i][1])
+    #    else:
+    #        priority.append(None)
+    #        comments.append(None)
+    #ASCII['Priority'] = np.array(priority)
+    #ASCII['Comments'] = np.array(comments)
+    #for j in ['Priority', 'Comments']:
+    #    props.append(j)
+    
+    # Correct missing Imags (probably most of them):
+    #if pysynphotImport==True:
+    #    ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
+    #    m = len( ixs )
+    #    print( '\nEstimating {0:.0f} Imags...'.format( m ) )
+    #    for i in range( m ):
+    #        Jmag = ASCII['Jmag'][ixs[i]]
+    #        TstarK = ASCII['TstarK'][ixs[i]]
+    #        loggCGS = ASCII['loggstarCGS'][ixs[i]]
+    #        if np.isfinite( Jmag )*( TstarK<31000 )*np.isfinite( loggCGS ):
+    #            Imag = Utils.convertMag( Jmag, TstarK, loggCGS, \
+    #                                     inputMag='J', outputMag='I' )
+    #            ASCII['Imag'][ixs[i]] = Imag
+    col0 = 'Target'.rjust( 18 ) 
+    #col1 = 'RA'.center( 16 )
+    #col2 = 'Dec'.center( 14 )
+    col3a = 'Vmag'.rjust( 7 )
+    col3b = 'Jmag'.rjust( 7 )
+    col3c = 'Hmag'.rjust( 7 )
+    col3d = 'Kmag'.rjust( 7 )
+    col4 = SMFlag.rjust( 10 )
+    col5 = 'K(m/s)'.rjust( 8 )
+    col6 = 'P(d)'.rjust( 10 )
+    col7 = 'P(d)'.rjust( 10 )
+    col8 = 'Teff(K)'.rjust( 10 )
+    #col7 = 'logg(CGS)'.rjust( 10 )
+    col9 = 'Rs(RS)'.rjust( 10 )
+    col10 = 'Ms(MS)'.rjust( 10 )
+    col11a = 'MpVal(ME)'.rjust( 12 )
+    col11b = 'MpSigL(ME)'.rjust( 12 )
+    col11c = 'MpSigU(ME)'.rjust( 12 )
+    col12 = 'Rp(RE)'.rjust( 10 )
+    col13 = 'Teq(K)'.rjust( 10 )
+    ostr = '# Exoplanet Archive accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
+    ostr += '{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}'\
+            .format( col0, \
+                     col3a, col3b, col3c, col3d, col4, \
+                     col5, col6, col8, col9, col10, \
+                     col11a, col11b, col11c, \
+                     col12, col13 )
+    ncol = [ 18, 7, 7, 7, 7, 10, 8, \
+             10, 10, 10, 10, 12, 12, 12, 10, 10 ] # column width
+    ndps = [  0,  1, 1, 1, 1, 1, 1, \
+              3,  0,  1, 1,  3, 3, 3,  1, 0 ] # decimal places
+    ostr += '\n#{0}'.format( 161*'-' )
+    m = len( props )
+    def rowStr( i ):
+        rstr = '\n  '
+        for j in range( m ): # loop over each property
+            k = props[j]
+            if ( k!='planetName' )*( k!='RA' )*( k!='Dec' ):
+                # numbers
+                rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+            else: # strings
+                rstr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
+        return rstr
+    for i in range( n ): # loop over each TOI
+        rstr = rowStr( i )
+        ostr += rstr
+    # print(ostr)    
+    # Write to file:
+    oname = 'confirmedPlanets_{0}.txt'.format( SMFlag )
+    #if multTIC == True:
+    
+    #    oname = oname.replace('.txt', '_Multis.txt')
+    #else:
+    #    if onlyPCs == True:
+    #        oname = oname.replace( '.txt', '_onlyPCs.txt' )
+    #    if topFivePredicted==True:
+    #        oname = oname.replace( '.txt', '_topPredicted.txt' )
     odir = os.path.join( os.getcwd(), 'ASCII' )
     if os.path.isdir( odir )==False:
         os.makedirs( odir )

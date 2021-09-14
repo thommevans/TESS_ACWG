@@ -29,6 +29,7 @@ TEFFK_SUN = 5800
 
 def Confirmed( csvIpath='', pklOdir='', forceDownload=False ):
     zAll, zMissing, dateStr = readConfirmedNExScI( csvIpath, forceDownload=forceDownload )
+    
     zOut = { 'missingProperties':zMissing, 'allVals':zAll, 'dateStr':dateStr }
     oname = 'confirmedProperties.pkl'
     odir = os.getcwd()
@@ -215,14 +216,13 @@ def getDateStr( fpath, whichList='Confirmed' ):
 def readConfirmedNExScI( fpath, forceDownload=False ):
     dateStr = getDateStr( fpath, whichList='Confirmed' )
     zRaw = readRawConfirmedNExScI( fpath, forceDownload=forceDownload )
-    
     if not forceDownload:
         if 'allVals' in zRaw:
             z = pickle.load(open('confirmedProperties.pkl', 'rb'))
             zMissing, zAll, dateStr = [i for i in z.values()]
             return zAll, zMissing, dateStr
     
-    zAll, zMissing = processRaw( zRaw )
+    zAll, zMissing = processRawConfirmed( zRaw )
     zAll = addMissingInsol( zAll )
     zAll = addUnits( zAll )
     zAll = addGravPl( zAll )
@@ -231,6 +231,7 @@ def readConfirmedNExScI( fpath, forceDownload=False ):
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
                                     zAll['TstarK'], zAll['Kmag'] )
+    zAll['Kamp'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
     return zAll, zMissing, dateStr
 
 def readTOIsNExScI( fpath, forceDownload=False ):
@@ -320,12 +321,12 @@ def addTeq( z ):
 
 
 
-def processRaw( zRaw ):
+def processRawConfirmed( zRaw ):
     # First check the number of unique planets:
     p = np.unique( zRaw['planetName'] )
     n = len( p )
     print( '\n{0:.0f} unique planets identified.'.format( n ) )
-
+    
     # Loop over each planet:
     z = {}
     for i in range( n ):
@@ -342,6 +343,8 @@ def processRaw( zRaw ):
     for k in properties:
         z[k] = np.array( z[k] )
     z['planetName'] = np.array( z['planetName'], dtype=str )
+    z['RA'] = np.array( z['RA'], dtype=str )
+    z['Dec'] = np.array( z['Dec'], dtype=str )
     z = correctaRs( z )
     z = correctRpRs( z )
     z = correctImpact( z )
@@ -412,10 +415,13 @@ def correctImpact( z ):
 
 
 def extractProperties( zRaw, planetName ):
+    # Properties without uncertainties are props1:
     props1 = [ 'Pday', 'aAU', 'ecc', 'inclDeg', 'b', 'distParsec', \
+               'RA_deg', 'Dec_deg', \
                'Insol', 'T14hr', 'aRs', 'RpRs', 'TstarK', 'RsRS', 'MsMS', \
                'Vmag', 'Jmag', 'Hmag', 'Kmag', 'discoveredByTESS' ]
     
+    # Properties with uncertainties are props2:
     props2 = [ 'RpValRE', 'RpUppErrRE', 'RpLowErrRE', \
                'MpValME', 'MpUppErrME', 'MpLowErrME' ]
     nAll = len( zRaw['planetName'] )
@@ -430,6 +436,8 @@ def extractProperties( zRaw, planetName ):
     zOut = {}
     for k in props1+props2:
         zOut[k] = float( zPlanet[k][ixDefault] )
+    zOut['RA'] = zPlanet['RA'][ixDefault]
+    zOut['Dec'] = zPlanet['Dec'][ixDefault]
         
     ixOthers = np.arange( nPlanet )[zPlanet['defaultFlag']==0]
     nOthers = len( ixOthers )
@@ -578,6 +586,11 @@ def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
     z = {}
 
     z['planetName'] = t[1:,cols=='pl_name'].flatten()
+    z['RA'] = t[1:,cols=='rastr'].flatten()
+    z['Dec'] = t[1:,cols=='decstr'].flatten()
+    z['RA_deg'] = t[1:,cols=='ra'].flatten()
+    z['Dec_deg'] = t[1:,cols=='dec'].flatten()
+
     z['discoveryFacility'] = t[1:,cols=='disc_facility'].flatten()
     z['defaultFlag'] = t[1:,cols=='default_flag'].flatten()
     z['Pday'] = t[1:,cols=='pl_orbper'].flatten()
@@ -628,12 +641,13 @@ def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
         if ( k=='planetName' )+( k=='MpProvenance' )\
            +( k=='discoveryFacility' ):
             continue
+        elif ( k=='RA' )+( k=='Dec' ):
+            z[k] = np.array( z[k], dtype=str )
         elif ( k=='defaultFlag' )+( k=='discoveredByTESS' ):
             z[k] = np.array( z[k], dtype=int )
         else:
             z[k] = convertMissing( z[k] )
             z[k] = np.array( z[k], dtype=float )
-
     return z
 
 
