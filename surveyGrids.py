@@ -1783,35 +1783,36 @@ def CreateASCII( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', onlyPCs=F
     col14 = 'Teq(K)'.rjust( 10 )
     col15 = 'Priority'.center( 12 )
     col16 = 'Comments'.ljust( 50 )
-    ostr = '# TOIs accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
-    ostr += '{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}'\
-            .format( col0, col1, col2, col3, \
-                     col4a, col4b, col4c, col4d, col4e, \
-                     col5, col6, col7, col8, col9, col10, \
-                     col11, col12, col13, col14, col15, col16 )
+    hdr = '# TOIs accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
+    hdr += '{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}'\
+           .format( col0, col1, col2, col3, \
+                    col4a, col4b, col4c, col4d, col4e, \
+                    col5, col6, col7, col8, col9, col10, \
+                    col11, col12, col13, col14, col15, col16 )
     ncol = [ 18, 15, 16, 15, 7, 7, 7, 7, 7, 10, 8, \
              10, 10, 10, 10, 10, 10, 10, 10, 12, 50 ] # column width
     ndps = [  0,  0, 2,  2, 1, 1, 1, 1, 1, 1, 1,  \
               3,  0,  1, 1, 1,  1,  1, 0, 0, 0 ] # decimal places
-    ostr += '\n#{0}'.format( 323*'-' )
+    hdr += '\n#{0}'.format( 323*'-' )
     m = len( props )
-    def rowStr( i ):
+    def rowStr( i, zin ):
         rstr = '\n  '
         for j in range( m ): # loop over each property
             k = props[j]
             if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' )*(k!='Comments')*(k!='Priority'):
                 # numbers
-                rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+                rstr += '{0:.{1}f}'.format( zin[k][i], ndps[j] ).rjust( ncol[j] )
             elif (k=='Priority'):
-                rstr += '{0}'.format( ASCII[k][i] ).center( ncol[j] )
+                rstr += '{0}'.format( zin[k][i] ).center( ncol[j] )
             elif (k=='Comments'):
                 # numbers
-                rstr += '{0}'.format( ASCII[k][i] ).ljust( ncol[j] )
+                rstr += '{0}'.format( zin[k][i] ).ljust( ncol[j] )
             else: # strings
-                rstr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
+                rstr += '{0}'.format( zin[k][i] ).rjust( ncol[j] )
         return rstr
+    ostr = '{0}'.format( hdr )
     for i in range( n ): # loop over each TOI
-        rstr = rowStr( i )
+        rstr = rowStr( i, ASCII )
         ostr += rstr
     # print(ostr)    
     # Write to file:
@@ -1826,14 +1827,27 @@ def CreateASCII( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', onlyPCs=F
     odir = os.path.join( os.getcwd(), 'ASCII' )
     if os.path.isdir( odir )==False:
         os.makedirs( odir )
-    opath = os.path.join( odir, oname )
+    opath1 = os.path.join( odir, oname )
 
-    ofile = open( opath, 'w' )
+    ofile = open( opath1, 'w' )
     ofile.write( ostr )
     ofile.close()
-    print( '\nSaved:\n{0}'.format( opath ) )
 
-    return opath
+    # Now write out the same file but ranked by SM:
+    ixs = np.arange( n )[np.argsort( ASCII[SMFlag] )[::-1]]
+    for k in props:
+        ASCII[k] = ASCII[k][ixs]
+    ostr2 = '{0}'.format( hdr )
+    for i in range( n ): # loop over each TOI
+        rstr = rowStr( i, ASCII )
+        ostr2 += rstr
+    opath2 = opath1.replace( '.txt', '_ranked{0}.txt'.format( SMFlag ) )
+    ofile = open( opath2, 'w' )
+    ofile.write( ostr2 )
+    ofile.close()
+
+    print( '\nSaved:\n{0}\n{1}'.format( opath1, opath2 ) )
+    return opath1, opath2
 
 def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 'TSM' ):
     """
