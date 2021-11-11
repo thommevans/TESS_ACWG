@@ -628,11 +628,11 @@ def TeqK_Kempton (Pday, MsMS, TstarK, RsRS):
     MsSI = MsMS * MSUN_SI
     RsSI = RsRS * RSUN_SI
 
-    a = (GRAV_SI * MsSI * Psec**2/(4*np.pi**2))**(1/3)
+    aSI = (GRAV_SI * MsSI * Psec**2/(4*np.pi**2))**(1/3)
 
-    TeqK = TstarK * (RsSI/a)**(1/2) * (1/4)**(1/4)
-
-    return TeqK
+    TeqK = TstarK * (RsSI/aSI)**(1/2) * (1/4)**(1/4)
+    aRs = aSI/RsSI
+    return TeqK, aRs
 
 def HeatMapValues(TRange, RRange, TeqK, RpValRE, predTeqK, predRpVal):
     TOI_TeqK = list(TeqK[:])

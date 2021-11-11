@@ -232,6 +232,11 @@ def readConfirmedNExScI( fpath, forceDownload=False ):
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
                                     zAll['TstarK'], zAll['Kmag'] )
     zAll['Kamp'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
+    #ix1=( zAll['planetName']=='HD 191939 b' )
+    #ix2=( zAll['planetName']=='HD 191939 c' )
+    #print( zAll['RA'][ix1], zAll['RA_deg'][ix1] )
+    #print( zAll['RA'][ix2], zAll['RA_deg'][ix2] )
+    #pdb.set_trace()
     return zAll, zMissing, dateStr
 
 def readTOIsNExScI( fpath, forceDownload=False ):
@@ -256,7 +261,8 @@ def readTOIsNExScI( fpath, forceDownload=False ):
 
     zAll['MsMS'] = Utils.computeStellarMass( zAll['RsRS'], zAll['loggstarCGS'])
 
-    zAll['TeqK'] = Utils.TeqK_Kempton( zAll['Pday'], zAll['MsMS'], zAll['TstarK'], zAll['RsRS'])
+    zAll['TeqK'], zAll['aRs'] = Utils.TeqK_Kempton( zAll['Pday'], zAll['MsMS'], \
+                                                    zAll['TstarK'], zAll['RsRS'])
     #TeqK computed as in Kempton. Pulled TeqK values stored in TeqK_exofop
 
     zAll['TSM'] = Utils.computeTSM( zAll['RpValRE'], zAll['MpValME'], \
@@ -331,6 +337,10 @@ def processRawConfirmed( zRaw ):
     z = {}
     for i in range( n ):
         zi = extractProperties( zRaw, p[i] )
+        if 0:#zi['MpLowErrME']<0:
+            print( 'aaaaaa' )
+            print( zi )
+            pdb.set_trace()
         if i==0:
             z['planetName'] = [ p[i] ]
             properties = list( zi.keys() )
@@ -415,9 +425,9 @@ def correctImpact( z ):
 
 
 def extractProperties( zRaw, planetName ):
+
     # Properties without uncertainties are props1:
     props1 = [ 'Pday', 'aAU', 'ecc', 'inclDeg', 'b', 'distParsec', \
-               'RA_deg', 'Dec_deg', \
                'Insol', 'T14hr', 'aRs', 'RpRs', 'TstarK', 'RsRS', 'MsMS', \
                'Vmag', 'Jmag', 'Hmag', 'Kmag', 'discoveredByTESS' ]
     
@@ -434,11 +444,18 @@ def extractProperties( zRaw, planetName ):
     # Fill properties with default values:
     ixDefault = ( zPlanet['defaultFlag']==1 )
     zOut = {}
-    for k in props1+props2:
-        zOut[k] = float( zPlanet[k][ixDefault] )
-    zOut['RA'] = zPlanet['RA'][ixDefault]
-    zOut['Dec'] = zPlanet['Dec'][ixDefault]
-        
+    for k in props1:
+        zOut[k] = np.abs( float( zPlanet[k][ixDefault] ) )
+    for k in props2:
+        zOut[k] = np.abs( float( zPlanet[k][ixDefault] ) )
+        #if planetName=='EPIC 211945201 b':
+        #    print( k, zOut[k], zPlanet[k][ixDefault] )
+    #if planetName=='EPIC 211945201 b':
+    #    pdb.set_trace()
+    zOut['RA_deg'] = float( zPlanet['RA_deg'][ixDefault][0] )
+    zOut['Dec_deg'] = float( zPlanet['Dec_deg'][ixDefault][0] )
+    zOut['RA'] = str( zPlanet['RA'][ixDefault][0] )
+    zOut['Dec'] = str( zPlanet['Dec'][ixDefault][0] )
     ixOthers = np.arange( nPlanet )[zPlanet['defaultFlag']==0]
     nOthers = len( ixOthers )
     if nOthers>0:
@@ -455,6 +472,9 @@ def extractProperties( zRaw, planetName ):
        
         z = [ [ 'RpValRE', 'RpUppErrRE', 'RpLowErrRE' ], \
               [ 'MpValME', 'MpUppErrME', 'MpLowErrME' ] ]
+        if ( zOut['MpLowErrME']<0 ):
+            print( '\nA wtf' )
+            pdb.set_trace()
         for k in z:
             zOut = fixValuesWithUncertainties( zOut, zPlanet, k, ixOthers, \
                                                planetName, mostPreciseAlways=True )
@@ -481,9 +501,12 @@ def fixValuesWithUncertainties( zAll, zPlanet, k, ixOthers, planetName, \
         n = int( ixs.sum() )
         if n>0:
             ixPrecise = np.arange( n )[np.argmin(uncs[ixs])]
-            zAll[k[0]] = float( zPlanet[k[0]][ixOthers[ixs][ixPrecise]] )
-            zAll[k[1]] = float( zPlanet[k[1]][ixOthers[ixs][ixPrecise]] )
-            zAll[k[2]] = float( zPlanet[k[2]][ixOthers[ixs][ixPrecise]] )
+            zAll[k[0]] = float( medVal[ixs][ixPrecise] )
+            zAll[k[1]] = float( uncsUpp[ixs][ixPrecise] )
+            zAll[k[2]] = float( uncsLow[ixs][ixPrecise] )
+            #zAll[k[0]] = float( zPlanet[k[0]][ixOthers[ixs][ixPrecise]] )
+            #zAll[k[1]] = float( zPlanet[k[1]][ixOthers[ixs][ixPrecise]] )
+            #zAll[k[2]] = float( zPlanet[k[2]][ixOthers[ixs][ixPrecise]] )
     elif mostPreciseAlways:
         # Case 2. Default value is not NaN, but priority is most precise value.
         medVal = np.abs( np.concatenate( [ [zAll[k[0]]], zPlanet[k[0]][ixOthers] ] ) )
@@ -624,9 +647,16 @@ def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
     z['Kmag'] = t[1:,cols=='sy_kmag'].flatten()
 
     def convertMissing( zarr ):
+        # Old version:
+        #zarrOut = np.ones( len( zarr ) )
+        #ixs = ( zarr!='' )
+        #zarrOut[ixs] = np.abs( np.array( zarr[ixs], dtype=float ) )
+        #ixs = ( zarr=='' )
+        #zarrOut[ixs] = np.nan
+        # New version from TOI routine:
         zarrOut = np.ones( len( zarr ) )
         ixs = ( zarr!='' )
-        zarrOut[ixs] = np.abs( np.array( zarr[ixs], dtype=float ) )
+        zarrOut[ixs] = np.array( zarr[ixs], dtype=float ) 
         ixs = ( zarr=='' )
         zarrOut[ixs] = np.nan
         return zarrOut
@@ -643,6 +673,8 @@ def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
             continue
         elif ( k=='RA' )+( k=='Dec' ):
             z[k] = np.array( z[k], dtype=str )
+        #elif ( k=='RA_deg' )+( k=='Dec_deg' ):
+        #    z[k] = np.array( z[k], dtype=float )
         elif ( k=='defaultFlag' )+( k=='discoveredByTESS' ):
             z[k] = np.array( z[k], dtype=int )
         else:

@@ -1,4 +1,5 @@
 import pdb, sys, os
+import csv
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -332,6 +333,10 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     print( '{0:.0f} planets have mass measurements or estimates'.format( len( ixs ) ) )
     print( 'and orbit stars with radii 0.05-10 R_Sun' )
     pl = z['planetName'][ixs]
+    RA = z['RA'][ixs]
+    Dec = z['Dec'][ixs]
+    RA_deg = z['RA_deg'][ixs]
+    Dec_deg = z['Dec_deg'][ixs]
     SM = z['SM'][ixs]
     Teq = z['TeqK'][ixs]
     Ts = z['TstarK'][ixs]
@@ -346,7 +351,6 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     plTess=list(plTess)
     for i in range(len(plTess)):
         plTess[i] = plTess[i].replace(' ', '')
-
     onames = {}
     
     # Radius-temperature plot for all planets with well-measured mass:
@@ -381,7 +385,15 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
                                    RADecStr=RADecStr, HeatMap=HeatMap  )
         fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                    horizontalalignment='left', verticalalignment='top' )
+        #print( 'PLOT input to plotTeqRpGrid from transmissionGridConfirmed:' )
+        #print( len( pl ) )
+        #print( ipath )
+        #pdb.set_trace()
     else:
+        #print( 'ASCII input to plotTeqRpGrid from transmissionGridConfirmed:' )
+        #print( len( pl ) )
+        #print( ipath )
+        #pdb.set_trace()
         plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, \
                                 titleStr=titleStr, \
                                 dateStr=dateStr, survey=survey, ASCII=ASCII, \
@@ -731,7 +743,7 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
     Plots grid of planets and TOIs by TeqK and RpRE
     SM: (TSM or ESM, list of float)
     """
-
+        
     if cgrid is None:
         cgrid = np.array( [ 201, 148, 199 ] )/256.
         
@@ -754,10 +766,10 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
     
     if ASCII:
         plList = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                                   xLines, yLines, survey=survey, ASCII=True )
+                            xLines, yLines, survey=survey, ASCII=True )
         return plList, dateStr
-    ax, SMstr = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                           xLines, yLines, plTess, survey=survey )
+    ax, SMstr = addTopSMs(  ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
+                            xLines, yLines, plTess=plTess, survey=survey )
     for i in range( nT ):
         ax.plot( [xLines[i],xLines[i]], [yLines.min(),yLines.max()], '-', \
                  c=cgrid, zorder=1 )
@@ -833,7 +845,7 @@ def formatAxisTicks( ax ):
     return ax
 
 def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                xLines, yLines, plTess=None, survey={}, ASCII=False ):
+               xLines, yLines, plTess=None, survey={}, ASCII=False ):
 
     """
     Supplementary routine to graph planets and TOIs with top SM values in each grid section
@@ -910,7 +922,14 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                         ck = Utils.getStarColor( TstarK[ixs][k] )
                         ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
     if ASCII:
-        return plNames                
+        # test
+        #print( 'addTopSMs ASCII', len( pl ), len( plNames ) )
+        #pdb.set_trace()
+        return plNames
+    #else:
+    #    # test
+    #    #print( 'addTopSMs PLOT', len( pl ), len( plNames ) )
+    #    #pdb.set_trace()
     return ax, SMstr
 
 
@@ -1254,6 +1273,10 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
     ifile.close()
     z = z0['allVals']
     planetName = z['planetName']
+    RA = z['RA']
+    Dec = z['Dec']
+    RA_deg = z['RA_deg']
+    Dec_deg = z['Dec_deg']
     RsRS = z['RsRS']
     aAU = z['aAU']
     TeqK = z['TeqK']
@@ -1300,6 +1323,7 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
     print( 'Returning {0:.0f} planets with radii, {1}, and Teq values.'\
            .format( ixs.sum(), SMFlag ) )
     outp = { 'planetName':planetName[ixs], 'TESS':TESS[ixs], \
+             'RA':RA[ixs], 'Dec':Dec[ixs], 'RA_deg':RA_deg[ixs], 'Dec_deg':Dec_deg[ixs], \
              'SM':SM[ixs], 'T14hr':T14hr[ixs], 'Vmag':Vmag[ixs], \
              'Jmag':Jmag[ixs], 'Hmag':Hmag[ixs], 'Kmag':Kmag[ixs], \
              'b':b[ixs], 'RpRs':RpRs[ixs], 'TeqK':TeqK[ixs], 'Insol':Insol[ixs], \
@@ -1622,29 +1646,32 @@ def SMRepeats( SMFlag = 'ESM', survey = {} ):
             
     return bestSMs
             
-def ReadExoFOPProperties( forceDownload=False ):
-    
-    exoFOPpath = downloadTargetLists.ExoFopTOIs( forceDownload=forceDownload )
-    t = np.genfromtxt( exoFOPpath, dtype=str, delimiter=',', invalid_raise=False )
-    cols = t[0,:]
-    z = {}
-    z['TOI'] = np.array( t[1:,cols=='TOI'].flatten(), dtype='<U20' )
-    z['Priority'] = np.array( t[1:,cols=='Master'].flatten(), dtype='<U20' )
-    z['Comments'] = np.array( t[1:,cols=='Comments'].flatten() )
-    for i in range(len(z['Comments'])):
-        z['Comments'][i] = z['Comments'][i].replace('"','')
-    
+def readExoFOP( forceDownload=False ):
+    """
+    Reads in the TFOP priority and comments for each TOI.
+    """
+    exoFOPpath = downloadTargetLists.ExoFOP( forceDownload=forceDownload )
+    ifile = open( exoFOPpath )
+    reader = csv.reader( ifile, quotechar='"' )
+    d = []
+    for i in reader:
+        d += [ i ]
+    cols = np.array( d[0] )
+    rows = d[1:]
+    n = len( rows )
     y = {}
-    for i in range(len(z['TOI'])):
-        y[z['TOI'][i]] = [z['Priority'][i], z['Comments'][i]]
-
+    for i in range( n ):
+        TOI = np.array( rows[i] )[cols=='TOI'][0]
+        Priority = np.array( rows[i] )[cols=='Master'][0]
+        Comments = np.array( rows[i] )[cols=='Comments'][0]
+        y[TOI] = [ Priority, Comments ]
     return y
 
-def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=False, \
-                 multTIC=False ):
+def CreateASCII( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', onlyPCs=False, \
+                 topFivePredicted=False, multTIC=False, forceDownloadExoFOP=False ):
     
     Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
-    ifile = open( 'toiProperties.pkl', 'rb' )
+    ifile = open( ipath, 'rb' )
     z0 = pickle.load( ifile )
     ifile.close()
     z = z0['allVals']
@@ -1654,7 +1681,7 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=Fals
              'TstarK', 'loggstarCGS', 'RsRS', 'MsMS', \
              'MpValME', 'RpValRE', 'TeqK' ]
   
-    topRanked, dateStr = transmissionGridTOIs( survey=survey, SMFlag=SMFlag, \
+    topRanked, dateStr = transmissionGridTOIs( ipath=ipath, survey=survey, SMFlag=SMFlag, \
                                                onlyPCs=onlyPCs, ASCII=True )
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
@@ -1693,8 +1720,6 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=Fals
         ASCII[p] = z[p][topToPrintIxs]
     RA_deg = z['RA_deg'][topToPrintIxs]
     Dec_deg = z['Dec_deg'][topToPrintIxs]
-    #print( ASCII['planetName'] )
-    #pdb.set_trace()
 
     # Sort by declination coordinate:
     #ixs = np.argsort( ASCII['Dec_deg'] )
@@ -1702,13 +1727,13 @@ def CreateASCII( survey={}, SMFlag = 'TSM', onlyPCs=False, topFivePredicted=Fals
     for p in props:
         ASCII[p] = np.array( ASCII[p] )[ixs]
 
-    #Add exofop data to file:
-    exoFOP = ReadExoFOPProperties()
+    # Add exofop data to file:
+    exoFOP = readExoFOP( forceDownload=forceDownloadExoFOP )
     priority = []
     comments = []
     
     TOI = list(ASCII['planetName'])
-
+    
     for i,j in enumerate(TOI):
         k = j.split('-')[1]
         TOI[i] = k.split('(')[0]
@@ -1820,13 +1845,16 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
     ifile.close()
     z = z0['allVals']
     # TODO = Need to add RA, Dec, loggstarCGS to confirmedProperties.pkl
-    props = ['planetName', \
-             'Vmag', 'Jmag', 'Hmag', 'Kmag',\
-             SMFlag, 'Kamp', 'Pday', 'TstarK', 'RsRS', 'MsMS', \
-             'MpValME', 'MpLowErrME', 'MpUppErrME', 'RpValRE', 'TeqK' ]
+    props = [ 'planetName', 'RA', 'Dec', \
+              'Vmag', 'Jmag', 'Hmag', 'Kmag',\
+              SMFlag, 'Kamp', 'Pday', 'TstarK', 'RsRS', 'MsMS', \
+              'MpValME', 'MpLowErrME', 'MpUppErrME', 'RpValRE', 'TeqK' ]
   
-    topRanked, dateStr = transmissionGridConfirmed( survey=survey, SMFlag=SMFlag, \
+    topRanked, dateStr = transmissionGridConfirmed( ipath=ipath, survey=survey, SMFlag=SMFlag, \
                                                     ASCII=True )
+    #print( 'createASCII', survey, len( topRanked ) )
+    #pdb.set_trace()
+    
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
@@ -1841,7 +1869,7 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
 
     for i in range( nAll ):
         z['planetName'][i] = z['planetName'][i].replace( ' ', '' )
-    
+
     topRankedIxs = np.zeros( nTop, dtype=int )
     for i in range( nTop ):
         ixName = topRanked[i].rfind( '[' ) # DIFFERENT TO TOIs!
@@ -1866,57 +1894,42 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
     ASCII = {} 
     for p in props:
         ASCII[p] = z[p][topToPrintIxs]
-    #RA_deg = z['RA_deg'][topToPrintIxs]
-    #Dec_deg = z['Dec_deg'][topToPrintIxs]
-
+    RA_deg = z['RA_deg'][topToPrintIxs]
+    Dec_deg = z['Dec_deg'][topToPrintIxs]
+    
     # TO ADD BACK IN ONCE DEC_DEG ADDED BACK IN...
     # Sort by declination coordinate:
     #ixs = np.argsort( ASCII['Dec_deg'] )
-    #ixs = np.argsort( Dec_deg )
-    #for p in props:
-    #    ASCII[p] = np.array( ASCII[p] )[ixs]
+    ixs = np.argsort( Dec_deg )
+    for p in props:
+        ASCII[p] = np.array( ASCII[p] )[ixs]
+    RA_deg = RA_deg[ixs]
+    Dec_deg = Dec_deg[ixs]
 
+    #print( Dec_deg )
+    #pdb.set_trace()
+    
+    pl = list(ASCII['planetName'])
+
+    nn = len( pl )
+    #for i in range( nn ):
+    #    print( '' )
+    #    print( ASCII['planetName'][i], ASCII['RA'][i], ASCII['Dec'][i] )
+    #    print( ASCII['planetName'][i], RA_deg[i], Dec_deg[i] )
+    #pdb.set_trace()
     #Add exofop data to file:
     #exoFOP = ReadExoFOPProperties()
     #priority = []
     #comments = []
     
-    pl = list(ASCII['planetName'])
-
     for i,j in enumerate(pl):
         try:
             k = j.split('-')[1]
         except:
             continue
-        #TOI[i] = k.split('(')[0]
-    #for i in pl:
-    #    if i in exoFOP:
-    #        priority.append(exoFOP[i][0])
-    #        comments.append(exoFOP[i][1])
-    #    else:
-    #        priority.append(None)
-    #        comments.append(None)
-    #ASCII['Priority'] = np.array(priority)
-    #ASCII['Comments'] = np.array(comments)
-    #for j in ['Priority', 'Comments']:
-    #    props.append(j)
-    
-    # Correct missing Imags (probably most of them):
-    #if pysynphotImport==True:
-    #    ixs = np.arange( n )[np.isnan( ASCII['Imag'] )]
-    #    m = len( ixs )
-    #    print( '\nEstimating {0:.0f} Imags...'.format( m ) )
-    #    for i in range( m ):
-    #        Jmag = ASCII['Jmag'][ixs[i]]
-    #        TstarK = ASCII['TstarK'][ixs[i]]
-    #        loggCGS = ASCII['loggstarCGS'][ixs[i]]
-    #        if np.isfinite( Jmag )*( TstarK<31000 )*np.isfinite( loggCGS ):
-    #            Imag = Utils.convertMag( Jmag, TstarK, loggCGS, \
-    #                                     inputMag='J', outputMag='I' )
-    #            ASCII['Imag'][ixs[i]] = Imag
     col0 = 'Target'.rjust( 18 ) 
-    #col1 = 'RA'.center( 16 )
-    #col2 = 'Dec'.center( 14 )
+    col1 = 'RA'.center( 16 )
+    col2 = 'Dec'.center( 14 )
     col3a = 'Vmag'.rjust( 7 )
     col3b = 'Jmag'.rjust( 7 )
     col3c = 'Hmag'.rjust( 7 )
@@ -1924,28 +1937,27 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
     col4 = SMFlag.rjust( 10 )
     col5 = 'K(m/s)'.rjust( 8 )
     col6 = 'P(d)'.rjust( 10 )
-    col7 = 'P(d)'.rjust( 10 )
-    col8 = 'Teff(K)'.rjust( 10 )
+    col7 = 'Teff(K)'.rjust( 10 )
     #col7 = 'logg(CGS)'.rjust( 10 )
-    col9 = 'Rs(RS)'.rjust( 10 )
-    col10 = 'Ms(MS)'.rjust( 10 )
-    col11a = 'MpVal(ME)'.rjust( 12 )
-    col11b = 'MpSigL(ME)'.rjust( 12 )
-    col11c = 'MpSigU(ME)'.rjust( 12 )
-    col12 = 'Rp(RE)'.rjust( 10 )
-    col13 = 'Teq(K)'.rjust( 10 )
+    col8 = 'Rs(RS)'.rjust( 10 )
+    col9 = 'Ms(MS)'.rjust( 10 )
+    col10a = 'MpVal(ME)'.rjust( 12 )
+    col10b = 'MpSigL(ME)'.rjust( 12 )
+    col10c = 'MpSigU(ME)'.rjust( 12 )
+    col11 = 'Rp(RE)'.rjust( 10 )
+    col12 = 'Teq(K)'.rjust( 10 )
     ostr = '# Exoplanet Archive accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
-    ostr += '{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}'\
-            .format( col0, \
+    ostr += '{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}'\
+            .format( col0, col1, col2, \
                      col3a, col3b, col3c, col3d, col4, \
-                     col5, col6, col8, col9, col10, \
-                     col11a, col11b, col11c, \
-                     col12, col13 )
-    ncol = [ 18, 7, 7, 7, 7, 10, 8, \
+                     col5, col6, col7, col8, col9, \
+                     col10a, col10b, col10c, \
+                     col11, col12 )
+    ncol = [ 18, 16, 15, 7, 7, 7, 7, 10, 8, \
              10, 10, 10, 10, 12, 12, 12, 10, 10 ] # column width
-    ndps = [  0,  1, 1, 1, 1, 1, 1, \
-              3,  0,  1, 1,  3, 3, 3,  1, 0 ] # decimal places
-    ostr += '\n#{0}'.format( 161*'-' )
+    ndps = [  0,  0, 0, 1, 1, 1, 1, 1, 1, \
+              3,  0,  1, 1,  3, 3, 3, 1, 0 ] # decimal places
+    ostr += '\n#{0}'.format( 192*'-' )
     m = len( props )
     def rowStr( i ):
         rstr = '\n  '

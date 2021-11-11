@@ -31,7 +31,7 @@ def targetsWithPublishedConfirmation( forceDownload=False ):
          'decstr','dec','sy_dist','sy_disterr1','sy_disterr2','sy_vmag','sy_vmagerr1','sy_vmagerr2',\
          'sy_jmag','sy_jmagerr1','sy_jmagerr2','sy_hmag','sy_hmagerr1','sy_hmagerr2','sy_kmag',\
          'sy_kmagerr1','sy_kmagerr2'])
-        
+
     all_planets =  requests.get(default_query.split('*')[0] + add_few_elements + default_query.split('*')[1]) 
     
     all_planets = all_planets.text.split('\n')
@@ -81,7 +81,7 @@ def targetsConfirmedTESS( forceDownload=False ):
 
     return confirmedFpath
 
-def targetsUnpublishedTOIs( forceDownload=False ):
+def targetsUnpublishedTOIs( csvIpath='TOI_YYYY-MM-DD.csv', forceDownload=False ):
     """
     TESS Project Candidates from NASA Exoplanet Archive.
     
@@ -116,29 +116,23 @@ def targetsUnpublishedTOIs( forceDownload=False ):
     
     return toiFpath
 
-def ExoFopTOIs( forceDownload=False ):
+def ExoFOP( forceDownload=False ):
+    """
+    Download TFOP information. 
+    """
     date = str(datetime.date(datetime.now()))
-    path = 'ExoFop_'+date+'.csv'
+    path = 'ExoFOP_'+date+'.csv'
     toiFpath = path
     if not forceDownload:
         if os.path.exists(f'{os.getcwd()}/{path}'):
             return toiFpath
-        
+    print( '\nDownloading list from ExoFOP website...' )
     query = "https://exofop.ipac.caltech.edu/tess/download_toi.php?sort=toi&output=csv"
-    planets = requests.get( query )
-    planets = planets.text.split('\n')
-
-    columns = planets[0].split(',')
-    del(columns[53:57])
-    
-    data = [i.split(',') for i in planets[1:]]
-    for i in range( len(data) ):
-        if len( data[i] ) > 54:
-            del( data[i][-(len( data[i] ) - 53):-1] )
-            
-    df = pd.DataFrame( columns=columns, data=data )
-    df = df.replace( to_replace='', value=np.nan )
-    df.head()
-    df.to_csv( toiFpath, index=False )
-    
+    print( 'Done.' )
+    planets = requests.get( query ).text
+    ofile = open( toiFpath, 'w' )
+    ofile.write( planets )
+    ofile.close()
+    print( 'Saved:\n{0}\n'.format( toiFpath ) )
     return toiFpath
+
