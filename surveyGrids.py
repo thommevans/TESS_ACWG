@@ -324,7 +324,6 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     """
     z, dateStr = readConfirmedProperties( ipath=ipath, SMFlag = SMFlag )
     ostr = 'Confirmed'
-    print
 
     # Not applying Dec restrictions to Confirmed planets for now:
     #DecStr, DecMin_deg, DecMax_deg = processDecRestriction( None, None )
@@ -337,7 +336,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     # Apply cuts to all dictionary arrays:
     for k in list( z.keys() ):
         z[k] = z[k][ixs]
-        
+           
     #pl = z['planetName']#[ixs]
     #RA = z['RA']#[ixs]
     #Dec = z['Dec']#[ixs]
@@ -387,10 +386,10 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
         fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                    horizontalalignment='left', verticalalignment='top' )
     else:
-        plList = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, dateStr=dateStr, \
-                                survey=survey, ASCII=ASCII, RADecStr=RADecStr, \
-                                HeatMap=HeatMap, TOIGrid=False  )
-        return plList
+        plList, dateStr = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, dateStr=dateStr, \
+                                         survey=survey, ASCII=ASCII, RADecStr=RADecStr, \
+                                         HeatMap=HeatMap, TOIGrid=False  )
+        return plList, dateStr
     
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
@@ -881,10 +880,10 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
     ixs0 = np.arange( n )
     if nx>4:
         text_fs = 11
-        ndx = 30
+        #ndx = 27
     elif nx<=4:
         text_fs = 16
-        ndx = 20
+        #ndx = 20
     nList = 5 
     ms = 8
     for i in range( nx ): # loop over temperature columns
@@ -959,27 +958,26 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
                         if TOIGrid==True:
                             wt = 'normal'
                         nStr = len( plStr )
-                        ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
+                        fullStr = '{0} {1}'.format( plStr, SMStr )
+                        ax.text( xtxt, ytxt, fullStr, fontsize=text_fs, weight=wt, color=c, \
                                  horizontalalignment='left', verticalalignment='center' )
+                        # NOT SURE WHY I WAS TRYING TO PRINT SMSTR SEPARATELY BEFORE...
+                        # MAYBE THERE WAS A REASON?
+                        #ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
+                        #         horizontalalignment='left', verticalalignment='center' )
                         # Print the TSM/ESM string after the planet name.
                         # nStr is to move across the plStr, the +1 is to add a space,
                         # the dx/30 is roughly the amount of a single character/space,
                         # i.e. about 30 characters per grid square.
-                        xtxtSM = xtxt + ( nStr+1 )*( dx/ndx )
-                        ax.text( xtxtSM, ytxt, SMStr, fontsize=text_fs, weight='normal', color=c, \
-                                 horizontalalignment='left', verticalalignment='center' )
+                        #xtxtSM = xtxt + ( nStr+1 )*( dx/ndx )
+                        #ax.text( xtxtSM, ytxt, SMStr, fontsize=text_fs, weight='normal', color=c, \
+                        #         horizontalalignment='left', verticalalignment='center' )
                         ck = Utils.getStarColor( TstarK[ixs][k] )
                         ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
     if ASCII:
-        # test
-        #print( 'addTopSMs ASCII', len( pl ), len( plNames ) )
-        #pdb.set_trace()
         return plNames
-    #else:
-    #    # test
-    #    #print( 'addTopSMs PLOT', len( pl ), len( plNames ) )
-    #    #pdb.set_trace()
-    return ax, SMstr
+    else:
+        return ax, SMstr
 
 
 def estimateUncertaintyTSM( plDict, ixs, k ):
@@ -2053,8 +2051,7 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
               SMFlag, 'Kamp', 'Pday', 'TstarK', 'RsRS', 'MsMS', \
               'MpValME', 'MpLowErrME', 'MpUppErrME', 'RpValRE', 'TeqK' ]
   
-    topRanked, dateStr = transmissionGridConfirmed( ipath=ipath, survey=survey, SMFlag=SMFlag, \
-                                                    ASCII=True )
+    topRanked, dateStr = transmissionGridConfirmed( ipath=ipath, survey=survey, SMFlag=SMFlag, ASCII=True )
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
@@ -2063,11 +2060,9 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
         z['planetName'][i] = z['planetName'][i].replace( ' ', '' )
 
     # Identify the indices of the top-ranked targets in each cell and add asterisks to
-    # planet names in the array if they have been flaggedas such by the addTopSMs() 
+    # planet names in the array if they have been flagged as such by the addTopSMs() 
     # routine via the transmissionGridConfirmed() call above:
     topRankedIxs = np.zeros( nTop, dtype=int )
-    #print( topRanked )
-    #pdb.set_trace()
     for i in range( nTop ):
         if topRanked[i][-1]=='*':
             ix = int( ixsAll[z['planetName']==topRanked[i][:-1]] )
@@ -2076,9 +2071,6 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
             ix = int( ixsAll[z['planetName']==topRanked[i]] )
         topRankedIxs[i] = ix
     topToPrintIxs = topRankedIxs        
-    
-    print(topToPrintIxs)
-    n = len( topToPrintIxs )
     
     # Dictionary of properties for top-ranked to be written to ASCII output:
     ASCII = {} 
@@ -2097,7 +2089,7 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
     Dec_deg = Dec_deg[ixs]
     
     pl = list(ASCII['planetName'])
-    nn = len( pl )    
+    npl = len( pl )    
     for i,j in enumerate(pl):
         try:
             k = j.split('-')[1]
@@ -2147,14 +2139,14 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
             if j<m-1:
                 rstr = '{0},'.format( rstr )
         return rstr
-    for i in range( n ): # loop over each TOI
+
+    for i in range( npl ): # loop over each planet
         rstr = rowStr( i )
         ostr += rstr
-    # print(ostr)    
+
     # Write to file:
     oname = 'confirmedPlanets_{0}.txt'.format( SMFlag )
     #if multTIC == True:
-    
     #    oname = oname.replace('.txt', '_Multis.txt')
     #else:
     #    if onlyPCs == True:
