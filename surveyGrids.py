@@ -1,4 +1,4 @@
-import pdb, sys, os
+import pdb, sys, os, time
 import csv
 import numpy as np
 import matplotlib
@@ -7,6 +7,7 @@ import pickle
 from . import Utils, processTargetLists, downloadTargetLists
 from . import surveySetup
 #from astropy.io import ascii
+from forecaster import mr_forecast # for estimating mass uncertainties
 from astropy.table import Table
 try:
     import pysynphot
@@ -174,41 +175,42 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     DecStr, DecMin_deg, DecMax_deg = Utils.processDecRestriction( DecMin_deg, DecMax_deg )
     ixsDec = ( z['Dec_deg'][ixs0]>=DecMin_deg )*( z['Dec_deg'][ixs0]<=DecMax_deg )
     RADecStr = '{0}\n{1}\nNo bright limits have been applied\n'.format( RAStr, DecStr )
-    
+    # Exclude targets with large radius uncertainties:
+    RpUncMax = 0.25*z['RpValRE'] # Rp uncertainties <25% of radius value
+    RpUncMax[RpUncMax<1] = 1 # except if that's <1RE, then set to 1RE
+    ixsRp = ( z['RpUncRE']<RpUncMax ) # only keep those with Rp uncertainties in this range
+    print( '\nDiscarding {0:.0f} (out of {1:.0f}) TOIs due to large ExoFOP radius uncertainties\n'\
+           .format( len( ixsRp )-ixsRp.sum(), len( ixsRp ) ) )
     if onlyPCs == True:
         ixsPCs = ( [i[-4:]=='(PC)' for i in z['planetName'][ixs0]] )
-        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsPCs]
+        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsRp*ixsPCs]
     else:
-        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec]
-        
-    pl = z['planetName'][ixs]
-    Teq = z['TeqK'][ixs]
-    Ts = z['TstarK'][ixs]
-    MpVal = z['MpValME'][ixs]
-    RpVal = z['RpValRE'][ixs]
-    SM = z['SM'][ixs]
+        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsRp]
+    # Apply cuts to all dictionary arrays:
+    for k in list( z.keys() ):
+        z[k] = z[k][ixs]
     
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
     if ASCII:
-        plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
-                                titleStr=titleStr, dateStr=dateStr, \
+        plList = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, dateStr=dateStr, \
                                 survey=survey, RADecStr=RADecStr, ASCII=ASCII, \
-                                HeatMap=HeatMap )
+                                HeatMap=HeatMap, TOIGrid=True )
         return plList
-    fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM) , pl, \
-                               titleStr=titleStr, dateStr=dateStr, \
+    fig2, ax2 = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, dateStr=dateStr, TOIGrid=True, \
                                survey=survey, RADecStr=RADecStr, HeatMap=HeatMap )
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
-    toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
-    if onlyPCs == True:
-        toiNote = 'Only TOIs with "PC" TFOPWG Disposition are displayed\n'
-    toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
-    fig2.text( 0.08, 0.91-0.10, toiNote, \
-            c='black', fontsize=14, horizontalalignment='left', \
-            verticalalignment='bottom' )
+    #toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
+    #if onlyPCs == True:
+    #    toiNote = 'Only TOIs with "PC" TFOPWG Disposition are displayed\n'
+    #toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
+    if SMFlag=='TSM':
+        toiNote = 'For TSM calculations, empirical relation adapted from Chen & Kipping (2017) assumed for masses.'
+        fig2.text( 0.08, 0.91-0.10, toiNote, \
+                c='black', fontsize=14, horizontalalignment='left', \
+                verticalalignment='bottom' )
 
     if addSignature==True:
         for ax in [ax2]:
@@ -332,30 +334,30 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     
     print( '{0:.0f} planets have mass measurements or estimates'.format( len( ixs ) ) )
     print( 'and orbit stars with radii 0.05-10 R_Sun' )
-    pl = z['planetName'][ixs]
-    RA = z['RA'][ixs]
-    Dec = z['Dec'][ixs]
-    RA_deg = z['RA_deg'][ixs]
-    Dec_deg = z['Dec_deg'][ixs]
-    SM = z['SM'][ixs]
-    Teq = z['TeqK'][ixs]
-    Ts = z['TstarK'][ixs]
-    MpVal = z['MpValME'][ixs]
-    MpLsig = z['MpLsigME'][ixs]
-    MpUsig = z['MpUsigME'][ixs]
-    RpVal = z['RpValRE'][ixs]
-    RpLsig = z['RpLsigRE'][ixs]
-    RpUsig = z['RpUsigRE'][ixs]
-    TESS = np.array( z['TESS'][ixs], dtype=int )
-    plTess = pl[TESS>0]
-    plTess=list(plTess)
-    for i in range(len(plTess)):
-        plTess[i] = plTess[i].replace(' ', '')
+    # Apply cuts to all dictionary arrays:
+    for k in list( z.keys() ):
+        z[k] = z[k][ixs]
+        
+    #pl = z['planetName']#[ixs]
+    #RA = z['RA']#[ixs]
+    #Dec = z['Dec']#[ixs]
+    #RA_deg = z['RA_deg']#[ixs]
+    #Dec_deg = z['Dec_deg']#[ixs]
+    #SM = z['SM']#[ixs]
+    #Teq = z['TeqK']#[ixs]
+    #Ts = z['TstarK']#[ixs]
+    #MpVal = z['MpValME']#[ixs]
+    #MpLsig = z['MpLsigME']#[ixs]
+    #MpUsig = z['MpUsigME']#[ixs]
+    #RpVal = z['RpValRE']#[ixs]
+    #RpLsig = z['RpLsigRE']#[ixs]
+    #RpUsig = z['RpUsigRE']#[ixs]
+    #TESS = np.array( z['TESS'][ixs], dtype=int ) <-- this has been moved within the plotTeqRpGrid() routine
     onames = {}
     
     # Radius-temperature plot for all planets with well-measured mass:
     if not ASCII:
-        fig1a, ax1a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS,
+        fig1a, ax1a = plotTeqRpScatter( z, SMFlag, \
                                         applySMcuts=False, \
                                         wideFormat=wideFormat, survey=survey, \
                                         showGrid=showGrid, titleStr=titleStr, \
@@ -366,7 +368,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
 
         # Radius-temperature plot for all planets with well-measured mass
         # and SM cuts applied:
-        fig1b, ax1b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, \
+        fig1b, ax1b = plotTeqRpScatter( z, SMFlag, \
                                         applySMcuts=True, \
                                         wideFormat=wideFormat, survey=survey, \
                                         showGrid=showGrid, titleStr=titleStr, \
@@ -379,31 +381,21 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
 
         # Radius-temperature grid plot listing the top-ranked planets in each cell:
         extraNotes = 'TESS discoveries shown in bold font'
-        fig2, ax2 = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, \
-                                   titleStr=titleStr, extraNotes=extraNotes, \
-                                   dateStr=dateStr, survey=survey, \
+        fig2, ax2 = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, dateStr=dateStr, \
+                                   extraNotes=extraNotes, survey=survey, TOIGrid=False, \
                                    RADecStr=RADecStr, HeatMap=HeatMap  )
         fig2.text( 0.10, 0.995, cutStr, c='black', fontsize=12, \
                    horizontalalignment='left', verticalalignment='top' )
-        #print( 'PLOT input to plotTeqRpGrid from transmissionGridConfirmed:' )
-        #print( len( pl ) )
-        #print( ipath )
-        #pdb.set_trace()
     else:
-        #print( 'ASCII input to plotTeqRpGrid from transmissionGridConfirmed:' )
-        #print( len( pl ) )
-        #print( ipath )
-        #pdb.set_trace()
-        plList = plotTeqRpGrid( Teq, RpVal, Ts, (SMFlag, SM), pl, plTess, \
-                                titleStr=titleStr, \
-                                dateStr=dateStr, survey=survey, ASCII=ASCII, \
-                                RADecStr=RADecStr, HeatMap=HeatMap  )
+        plList = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, dateStr=dateStr, \
+                                survey=survey, ASCII=ASCII, RADecStr=RADecStr, \
+                                HeatMap=HeatMap, TOIGrid=False  )
         return plList
     
     onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
 
     # Scatter plots without the grid:
-    fig3a, ax3a = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, \
+    fig3a, ax3a = plotTeqRpScatter( z, SMFlag, \
                                     applySMcuts=False, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr, \
@@ -411,7 +403,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
                                     showNeptuneRadius=showNeptuneRadius, \
                                     showJupiterRadius=showJupiterRadius )
     onames['3a'] = '{0}_allPlanets_showsTESS.pdf'.format( ostr )
-    fig3b, ax3b = plotTeqRpScatter( pl, Teq, RpVal, Ts, (SMFlag, SM), TESS, \
+    fig3b, ax3b = plotTeqRpScatter( z, SMFlag, \
                                     applySMcuts=True, \
                                     wideFormat=wideFormat, survey=survey, \
                                     showGrid=showGrid, titleStr=titleStr,
@@ -736,13 +728,24 @@ def addSignatureToAxis( ax ):
     return None
 
 
-def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr='', \
-                   RADecStr='', dateStr='', wideFormat=True, survey={}, \
+def plotTeqRpGrid( plDict, SMFlag, plTESS=None, cgrid=None, titleStr='', \
+                   RADecStr='', dateStr='', wideFormat=True, survey={}, TOIGrid=False, \
                    ASCII=False, HeatMap=True, extraNotes=None ):
     """
     Plots grid of planets and TOIs by TeqK and RpRE
     SM: (TSM or ESM, list of float)
+    pl contains the full planet names that will ultimately be printed in the ASCII output.
     """
+
+    pl = plDict['planetName']
+    if TOIGrid==False:
+        TESS = np.array( plDict['TESS'], dtype=int )
+        plTESS = pl[TESS>0]
+        plTESS = list(plTESS)
+        for i in range(len(plTESS)):
+            plTESS[i] = plTESS[i].replace(' ', '')
+    else:
+        plTESS = None
         
     if cgrid is None:
         cgrid = np.array( [ 201, 148, 199 ] )/256.
@@ -765,11 +768,11 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
     yLines = np.arange( 0.5, nR+0.5 )
     
     if ASCII:
-        plList = addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                            xLines, yLines, survey=survey, ASCII=True )
+        plList = addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, \
+                            xLines, yLines, survey=survey, TOIGrid=TOIGrid, ASCII=True )
         return plList, dateStr
-    ax, SMstr = addTopSMs(  ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-                            xLines, yLines, plTess=plTess, survey=survey )
+    ax, SMstr = addTopSMs(  ax, plDict, SMFlag, Tgrid, Rgrid, \
+                            xLines, yLines, plTESS=plTESS, TOIGrid=TOIGrid, survey=survey )
     for i in range( nT ):
         ax.plot( [xLines[i],xLines[i]], [yLines.min(),yLines.max()], '-', \
                  c=cgrid, zorder=1 )
@@ -796,6 +799,8 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
                               [1, 1, 1]] }
         cmap = matplotlib.colors.LinearSegmentedColormap( 'testCmap', \
                                                           segmentdata=cdict, N=256 )
+        print( '\n\naddHeatMap() routine must be updated to take dictionary as input\n\n' )
+        pdb.set_trace()
         ax, val = addHeatMap(ax, xLines, yLines, TeqK, RpRE, Tgrid, Rgrid, cmap)
         addColorBar(axc, val, cmap)
     
@@ -813,8 +818,9 @@ def plotTeqRpGrid( TeqK, RpRE, TstarK, SM, pl, plTess=None, cgrid=None, titleStr
     fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
               horizontalalignment='left', verticalalignment='bottom' )
    
-    otherNotes = '{0} values are listed in square brackets \n'.format( SM[0] )   
-    otherNotes += 'Asterisks indicate top-5 predicted (Barclay et al., 2018)'.format(SM[0])
+    otherNotes = '{0} values are listed in square brackets. NOTE: Quoted $1\\sigma$ uncertainties'.format( SMFlag )
+    otherNotes += ' are approximate\nand only account for the uncertainty in the stellar and planetary radii.'
+    otherNotes += '\nAsterisks indicate potential top-5 in box, based on Barclay et al. (2018) predicted yield.'                  
     if extraNotes is not None:
         otherNotes += '\n{0}'.format( extraNotes )
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
@@ -844,69 +850,102 @@ def formatAxisTicks( ax ):
     ax.yaxis.set_tick_params( length=tlm, width=tw, which='minor' )
     return ax
 
-def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
-               xLines, yLines, plTess=None, survey={}, ASCII=False ):
+def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
+               TOIGrid=False, plTESS=None, survey={}, ASCII=False ):
 
     """
     Supplementary routine to graph planets and TOIs with top SM values in each grid section
 
     Parameters:
     ax: figure axes from other supplementary routines
+    plDict: Dictionary of arrays containing the planet+star properties
     pl, TeqK, RpRE, TstarK: planet values 
     SM: (TSM or ESM, list of values)
     Tgrid, Rgrid: values of TeqK and RpRE grid section values 
     xLines, yLines: x and y values for graph 
     survey: dictionary of survey values
     """
+
+    # Unpack dictionary into necessary arrays:
+    pl = plDict['planetName']
+    TeqK = plDict['TeqK']
+    TstarK = plDict['TstarK']
+    RpRE = plDict['RpValRE']
+    SMVals = plDict['SM']
+               
     plNames = []    
     framework = survey['framework']
     nx = len( xLines )-1 # Number of lines on x axis
     ny = len( yLines )-1 # Number of lines on y axis
     n = len( pl ) # Number of planets
-    ixs0 = np.arange( n ) 
-    text_fs = 12
+    ixs0 = np.arange( n )
+    if nx>4:
+        text_fs = 11
+        ndx = 30
+    elif nx<=4:
+        text_fs = 16
+        ndx = 20
     nList = 5 
     ms = 8
     for i in range( nx ): # loop over temperature columns
         ixsi = ( TeqK>=Tgrid[i] )*( TeqK<Tgrid[i+1] ) # Show if within the temperature range
-        xsymb = xLines[i] + 0.06*( xLines[i+1]-xLines[i] ) 
-        xtxt = xLines[i] + 0.12*( xLines[i+1]-xLines[i] )
+        xsymb = xLines[i] + 0.06*( xLines[i+1]-xLines[i] )
+        dx = ( xLines[i+1]-xLines[i] )
+        xtxt = xLines[i] + 0.12*dx
 
         for j in range( ny ): # loop over radius rows
             # Indices inside box above the TSM threshold:
             RpREj = 0.5*( Rgrid[j]+Rgrid[j+1] )
 
             #Find the threshold SM for the cell
-            if SM[0] == 'TSM':
+            if SMFlag == 'TSM':
                 SMj, SMstr = survey['thresholdTSM']( RpREj, framework=framework )
-            elif SM[0] == 'ESM':
+            elif SMFlag == 'ESM':
                 SMj, SMstr = survey['thresholdESM']( RpREj, framework=framework )
 
             ixsj = ( RpRE>=Rgrid[j] )*( RpRE<Rgrid[j+1] ) # Show if within the radius range
             # Show if in the cell and SM higher than threshold:
-            ixsij = ixs0[ixsi*ixsj*( SM[1]>SMj )] 
+            ixsij = ixs0[ixsi*ixsj*( SMVals>SMj )] 
             nij = len( ixsij ) # Number in cell higher than threshold
             if nij>0:
                 # Order by decreasing SM:
-                ixso = np.argsort( SM[1][ixsij] ) 
+                ixso = np.argsort( SMVals[ixsij] ) 
                 ixs = ixsij[ixso][::-1] 
                 
                 nwrite = min( [ nij, nList ] ) # number above threshold in cell or 5
                 dy = ( yLines[j+1]-yLines[j] )/float(nList+0.5)
                 y0 = yLines[j]+4.8*dy
 
-                predSM = getFifthPredicted( SM[0], Rgrid[j+1], Rgrid[j], \
+                predSM = getFifthPredicted( SMFlag, Rgrid[j+1], Rgrid[j], \
                                             Tgrid[i+1], Tgrid[i] )
                     
                 for k in range( nwrite ): #For each planet (max 5)
                     ytxt = y0-k*dy
                     plStr = pl[ixs][k].replace( ' ', '' )
-                    plStr = '{0} [{1:.0f}]'.format( plStr, SM[1][ixs][k] ) #Planet Name [SM]
-                
-                    if SM[1][ixs][k] >= predSM:
+                    if TOIGrid==True:
+                        t1 = time.time()
+                        if SMFlag=='TSM':
+                            SMUnc = estimateUncertaintyTSM( plDict, ixs, k )
+                        elif SMFlag=='ESM':
+                            SMUnc = estimateUncertaintyESM( plDict, ixs, k )
+                        plStr = '{0}'.format( plStr )
+                        SMStr = '[{0:.0f}(-{1:.0f},+{2:.0f})]'.format( SMVals[ixs][k], SMUnc[0], SMUnc[1] )
+                        t2 = time.time()
+                    else:
+                        SMStr = '[{0:.0f}]'.format( SMVals[ixs][k] )
+                    if SMVals[ixs][k] >= predSM:
                         plStr += '*'
-                    plNames.append(plStr)
+                    plNames.append( plStr )
                     if not ASCII:
+
+                        # If this is a TOI grid plot, remove the
+                        # redundant prefix and suffix:
+                        if TOIGrid==True:
+                            plStr = plStr.replace( 'TOI-', '' )
+                            ix1 = plStr.find( '(' )
+                            ix2 = plStr.find( ')' )
+                            plStr = plStr[:ix1] + plStr[ix2+1:]
+                        
                         # Silver if APC or CP
                         if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ): 
                             c = 'Silver'
@@ -914,10 +953,20 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
                         else: # Black if PC
                             c = 'Black'
                             wt = 'normal'
-                        if plTess != None:
-                            if plStr.split(' ')[0] in plTess:
+                        if plTESS != None:
+                            if plStr.split(' ')[0] in plTESS:
                                 wt = 'bold'
+                        if TOIGrid==True:
+                            wt = 'normal'
+                        nStr = len( plStr )
                         ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
+                                 horizontalalignment='left', verticalalignment='center' )
+                        # Print the TSM/ESM string after the planet name.
+                        # nStr is to move across the plStr, the +1 is to add a space,
+                        # the dx/30 is roughly the amount of a single character/space,
+                        # i.e. about 30 characters per grid square.
+                        xtxtSM = xtxt + ( nStr+1 )*( dx/ndx )
+                        ax.text( xtxtSM, ytxt, SMStr, fontsize=text_fs, weight='normal', color=c, \
                                  horizontalalignment='left', verticalalignment='center' )
                         ck = Utils.getStarColor( TstarK[ixs][k] )
                         ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
@@ -932,6 +981,113 @@ def addTopSMs( ax, pl, SM, TeqK, RpRE, TstarK, Tgrid, Rgrid, \
     #    #pdb.set_trace()
     return ax, SMstr
 
+
+def estimateUncertaintyTSM( plDict, ixs, k ):
+    """
+    Monte Carlo estimates for TSM uncertainties.
+    
+    Samples Gaussian distributions for Rp and Rs.
+    Holds Teq, Mp, and Jmag fixed.
+    """
+    RsRS = plDict['RsRS'][ixs][k]
+    sigRsRS = plDict['RsUncRS'][ixs][k]
+    if np.isnan( sigRsRS ):
+        sigRsRS = 0.2*RsRS # arbitrarily set to 20% of radius value SMTP Error (220): Authentification failed
+    RpRE = plDict['RpValRE'][ixs][k]
+    sigRpRE = plDict['RpUncRE'][ixs][k]
+    MpME = plDict['MpValME'][ixs][k]
+    Jmag = plDict['Jmag'][ixs][k]
+    TeqK = plDict['TeqK'][ixs][k]
+    TstarK = plDict['TstarK'][ixs][k]
+    aRs = plDict['aRs'][ixs][k]
+    TSM = plDict['SM'][ixs][k]
+
+    n = 3000
+    zMp = MpME*np.ones( n ) #0.5*MpME + MpME*np.random.random( n )
+    zRp = RpRE + sigRpRE*np.random.randn( n )
+    zRs = RsRS + sigRsRS*np.random.randn( n )
+    # Ensure that the minimum Rp and Rs values are
+    # small positive numbers (i.e. not negative):
+    zRp[zRp<0.05] = 0.05
+    zRs[zRs<0.05] = 0.05
+    zTeqK = TeqK*np.ones( n )
+    zJmag = Jmag*np.ones( n )
+    zTSM = Utils.computeTSM( zRp, zMp, zRs, zTeqK, zJmag )
+
+    ixs0 = ( np.isnan(zTSM)==False )
+    if np.sum( ixs0 )<100:
+        pdb.set_trace()
+    zTSM = zTSM[ixs0]
+    n0 = len( zTSM )
+    n34 = int( 0.34*n0 )
+    dTSM = zTSM - np.median( zTSM )
+    
+    ixsL = ( dTSM<0 )
+    dTSML = np.abs( dTSM[ixsL] )
+    sigLowTSM = dTSML[np.argsort(dTSML)][n34]
+    
+    ixsU = ( dTSM>=0 )
+    dTSMU = np.abs( dTSM[ixsU] )
+    sigUppTSM = dTSMU[np.argsort(dTSMU)][n34]
+    
+    #sigLowTSM = TSM - zTSM.min()
+    #sigUppTSM = zTSM.max() - TSM    
+    sigTSM = [ sigLowTSM, sigUppTSM ]
+    
+    return sigTSM
+
+
+def estimateUncertaintyESM( plDict, ixs, k ):
+    """
+    Monte Carlo estimates for ESM uncertainties.
+    
+    Samples Gaussian distributions for Rp and Rs.
+    Holds Teq, Tstar, and Kmag fixed.
+    """
+    
+    RsRS = plDict['RsRS'][ixs][k]
+    sigRsRS = plDict['RsUncRS'][ixs][k]
+    if np.isnan( sigRsRS ):
+        sigRsRS = 0.2*RsRS # arbitrarily set to 20% of radius value 
+    RpRE = plDict['RpValRE'][ixs][k]
+    sigRpRE = plDict['RpUncRE'][ixs][k]
+    Kmag = plDict['Kmag'][ixs][k]
+    TeqK = plDict['TeqK'][ixs][k]
+    TstarK = plDict['TstarK'][ixs][k]
+    ESM = plDict['SM'][ixs][k]
+
+    n = 3000
+    zRp = RpRE + sigRpRE*np.random.randn( n )
+    zRs = RsRS + sigRsRS*np.random.randn( n )
+    # Ensure that the minimum Rp and Rs values are
+    # small positive numbers (i.e. not negative):
+    zRp[zRp<0.05] = 0.05
+    zRs[zRs<0.05] = 0.05
+    zTeqK = TeqK*np.ones( n )
+    zTstarK = TstarK*np.ones( n )
+    zKmag = Kmag*np.ones( n )
+    zRpRs = ( zRp*Utils.REARTH_SI )/( zRs*Utils.RSUN_SI )
+    zESM = Utils.computeESM( zTeqK, zRpRs, zTstarK, zKmag )
+
+    ixs0 = ( np.isnan(zESM)==False )
+    if np.sum( ixs0 )<100:
+        pdb.set_trace()
+    zESM = zESM[ixs0]
+    n0 = len( zESM )
+    n34 = int( 0.34*n0 )
+    dESM = zESM - np.median( zESM )
+    
+    ixsL = ( dESM<0 )
+    dESML = np.abs( dESM[ixsL] )
+    sigLowESM = dESML[np.argsort(dESML)][n34]
+    
+    ixsU = ( dESM>=0 )
+    dESMU = np.abs( dESM[ixsU] )
+    sigUppESM = dESMU[np.argsort(dESMU)][n34]
+    
+    sigESM = [ sigLowESM, sigUppESM ]
+    
+    return sigESM
 
 def generateAxisScatter( xlim=[0,3100], ylim=[0,26], wideFormat=False, \
                          whichType='RpTeq', titleStr='', DecStr='', \
@@ -977,7 +1133,7 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap=F
         xlow = 0.09
         ylow = 0.085
         axh = 0.8
-        axw = 0.90
+        axw = 0.93
         dxl = 0.06
         xlow2 = xlow+0.5*axw
         ylow2 = ylow+axh+0.005
@@ -985,12 +1141,12 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap=F
         subtitleY = 0.94
         dyNewLine = 0.01
     else:
-        fig = plt.figure( figsize=[16,9] )
-        xlow = 0.064
+        fig = plt.figure( figsize=[18,9] )
+        xlow = 0.052#0.064
         ylow = 0.085
         axh = 0.715
-        axw = 0.93
-        dxl = 0.044
+        axw = 0.945#0.93
+        dxl = 0.036
         xlow2 = xlow+0.7*axw
         ylow2 = ylow+axh+0.02
         axw2 = 0.25*axw
@@ -1123,7 +1279,7 @@ def tickLogFormat( y, pos ):
 
     
 
-def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, SM, TESS, ms=8, alpha=1, \
+def plotTeqRpScatter( plDict, SMFlag, ms=8, alpha=1, \
                       starColors=True, applySMcuts=False, survey={}, \
                       showGrid=True, indicateTESS=False, showSolarSystem=False, \
                       showStellarTrack=False, showNeptuneRadius=True, \
@@ -1139,6 +1295,23 @@ def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, SM, TESS, ms=8, alpha=1, \
     survey: dictionary of survey properties
     """
 
+    
+    planetNames = plDict['planetName']
+    Teq = plDict['TeqK']
+    RpVal = plDict['RpValRE']
+    Ts = plDict['TstarK']
+    SM = plDict['SM']
+    #if TOIGrid==False:
+    if 1: # will need to test if this works for TOIs... do they have a 'TESS' array?
+        TESS = np.array( plDict['TESS'], dtype=int )
+        plTESS = planetNames[TESS>0]
+        plTESS = list(plTESS)
+        for i in range(len(plTESS)):
+            plTESS[i] = plTESS[i].replace(' ', '')
+    #else:
+    #    plTESS = None
+
+    
     n = len( Teq )
     nTESS = np.sum( TESS )
     cTESS = np.array( [ 213, 128, 255 ] )/256.
@@ -1158,9 +1331,9 @@ def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, SM, TESS, ms=8, alpha=1, \
         else:
             c = c0
         
-        if SM[0] == 'TSM':
+        if SMFlag == 'TSM':
             SMi, SMstr = survey['thresholdTSM']( RpVal[i], framework=framework )
-        elif SM[0] == 'ESM':
+        elif SMFlag == 'ESM':
             SMi, SMstr = survey['thresholdESM']( RpVal[i], framework=framework )
 
         if applySMcuts==False: # plotting everything regardless of SM
@@ -1173,7 +1346,7 @@ def plotTeqRpScatter( planetNames, Teq, RpVal, Ts, SM, TESS, ms=8, alpha=1, \
                 ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=ms, alpha=alpha, \
                          mfc=c, mec=c, zorder=z0+i )
             
-        elif SM[1][i]>SMi: # if SM cuts applied, this one is high enough
+        elif SM[i]>SMi: # if SM cuts applied, this one is high enough
             if ( indicateTESS==True )*( TESS[i]==1 ):
                 ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=ms, alpha=alpha, \
                          mfc=c, mec=c, zorder=zTESS+nTESS+i )
@@ -1315,7 +1488,10 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
         SM[ixs] = Utils.computeTSM( RpValRE[ixs], MpValME[ixs], \
                                     RsRS[ixs], TeqK[ixs], Jmag[ixs] )
     elif SMFlag == 'ESM':
-        RpRs = RpValRE/RsRS
+        #RpSI = RpValRE*Utils.REARTH_SI
+        #RsSI = RsRS*Utils.RSUN_SI
+        #RpRs = RpSI/RsSI
+        RpRs = ( RpValRE*Utils.REARTH_SI )/( RsRS*Utils.RSUN_SI )
         SM[ixs] = Utils.computeESM( TeqK[ixs], RpRs[ixs], TstarK[ixs], Kmag[ixs] )
 
     ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
@@ -1333,7 +1509,7 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
     return outp, z0['dateStr']
 
 
-def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
+def readTOIProperties( ipath='toiProperties.pkl', SMFlag='TSM' ):
     """
     """
     ifile = open( ipath, 'rb' )
@@ -1345,13 +1521,19 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
     RAhr = RA*(24/360.)
     Dec = z['Dec_deg']
     RsRS = z['RsRS']
+    RsUncRS = np.row_stack( [ np.abs( z['RsLowErrRS'] ), np.abs( z['RsUppErrRS'] ) ] )
+    RsUncRS = np.max( RsUncRS, axis=0 )
     TeqK = z['TeqK']
     Jmag = z['Jmag']
+    Kmag = z['Kmag']
     TstarK = z['TstarK']
     RpValRE = z['RpValRE']
+    RpUncRE = np.row_stack( [ np.abs( z['RpLowErrRE'] ), np.abs( z['RpUppErrRE'] ) ] )
+    RpUncRE = np.max( RpUncRE, axis=0 )
     MpValME = z['MpValME']
     RpRs = z['RpRs']
     Jmag = z['Jmag']
+    aRs = z['aRs']
     TeqK_exofop = z['TeqK_exofop']
 
     if SMFlag == 'TSM':
@@ -1362,9 +1544,13 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag = 'TSM' ):
     ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
     outp = { 'planetName':planetName[ixs], 'SM':SM[ixs], 'RpRs':RpRs[ixs], \
              'RA_deg':RA[ixs], 'RA_hr':RAhr[ixs], 'Dec_deg':Dec[ixs], \
-             'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], 'Jmag':Jmag[ixs], \
-             'RpValRE':RpValRE[ixs], 'MpValME':MpValME[ixs], 'TeqK_exofop': TeqK_exofop[ixs]}
+             'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], \
+             'Jmag':Jmag[ixs], 'Kmag':Kmag[ixs], \
+             'RsRS':RsRS[ixs], 'RsUncRS':RsUncRS[ixs], 'aRs':aRs[ixs], \
+             'RpValRE':RpValRE[ixs], 'RpUncRE':RpUncRE[ixs], \
+             'MpValME':MpValME[ixs], 'TeqK_exofop': TeqK_exofop[ixs]}
     return outp, z0['dateStr']
+
 
 def readNoMassTESSProperties():
     """
@@ -1667,8 +1853,8 @@ def readExoFOP( forceDownload=False ):
         y[TOI] = [ Priority, Comments ]
     return y
 
-def CreateASCII( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', onlyPCs=False, \
-                 topFivePredicted=False, multTIC=False, forceDownloadExoFOP=False ):
+def CreateASCII_TOIs( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', onlyPCs=False, \
+                      topFivePredicted=False, multTIC=False, forceDownloadExoFOP=False ):
     
     Tgrid, Rgrid = survey['gridEdges']( survey['surveyName'] )
     ifile = open( ipath, 'rb' )
@@ -1697,11 +1883,14 @@ def CreateASCII( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', onlyPCs=F
 
     topRankedIxs = np.zeros( nTop, dtype=int )
     for i in range( nTop ):
-        ixName = topRanked[i].rfind( ')' )
-        ix = int( ixsAll[z['planetName']==topRanked[i][:ixName+1]] )
-        topRankedIxs[i] = ix
-        if topRanked[i][-1]=='*':
-            z['planetName'][ix] = '{0}*'.format( z['planetName'][ix] )
+        print( topRanked[i] )
+        if 0:
+            ixName = topRanked[i].find( ')' )
+            ix = int( ixsAll[z['planetName']==topRanked[i][:ixName+1]] )
+            topRankedIxs[i] = ix
+            if topRanked[i][-1]=='*':
+                z['planetName'][ix] = '{0}*'.format( z['planetName'][ix] )
+    pdb.set_trace()
     if topFivePredicted:
         topToPrintIxs = []
         for i in range( nTop ):
@@ -1762,26 +1951,26 @@ def CreateASCII( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', onlyPCs=F
                 Imag = Utils.convertMag( Jmag, TstarK, loggCGS, \
                                          inputMag='J', outputMag='I' )
                 ASCII['Imag'][ixs[i]] = Imag
-    col0 = 'Target'.rjust( 18 ) 
-    col1 = 'TICID'.rjust( 16 )
-    col2 = 'RA'.center( 16 )
-    col3 = 'Dec'.center( 14 )
-    col4a = 'Vmag'.rjust( 7 )
-    col4b = 'Imag'.rjust( 7 )
-    col4c = 'Jmag'.rjust( 7 )
-    col4d = 'Hmag'.rjust( 7 )
-    col4e = 'Kmag'.rjust( 7 )
-    col5 = SMFlag.rjust( 10 )
-    col6 = 'K(m/s)'.rjust( 8 )
-    col7 = 'P(d)'.rjust( 10 )
-    col8 = 'Teff(K)'.rjust( 10 )
-    col9 = 'logg(CGS)'.rjust( 10 )
-    col10 = 'Rs(RS)'.rjust( 10 )
-    col11 = 'Ms(MS)'.rjust( 10 )
-    col12 = 'Mp(ME)'.rjust( 10 )
-    col13 = 'Rp(RE)'.rjust( 10 )
-    col14 = 'Teq(K)'.rjust( 10 )
-    col15 = 'Priority'.center( 12 )
+    col0 = 'Target,'.rjust( 19 ) 
+    col1 = 'TICID,'.rjust( 17 )
+    col2 = 'RA,'.center( 17 )
+    col3 = 'Dec,'.center( 15 )
+    col4a = 'Vmag,'.rjust( 8 )
+    col4b = 'Imag,'.rjust( 8 )
+    col4c = 'Jmag,'.rjust( 8 )
+    col4d = 'Hmag,'.rjust( 8 )
+    col4e = 'Kmag,'.rjust( 8 )
+    col5 = '{0},'.format( SMFlag ).rjust( 11 )
+    col6 = 'K(m/s),'.rjust( 9 )
+    col7 = 'P(d),'.rjust( 11 )
+    col8 = 'Teff(K),'.rjust( 11 )
+    col9 = 'logg(CGS),'.rjust( 11 )
+    col10 = 'Rs(RS),'.rjust( 11 )
+    col11 = 'Ms(MS),'.rjust( 11 )
+    col12 = 'Mp(ME),'.rjust( 11 )
+    col13 = 'Rp(RE),'.rjust( 11 )
+    col14 = 'Teq(K),'.rjust( 11 )
+    col15 = 'Priority,'.center( 13 )
     col16 = 'Comments'.ljust( 50 )
     hdr = '# TOIs accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
     hdr += '{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}{18}{19}{20}'\
@@ -1801,20 +1990,20 @@ def CreateASCII( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', onlyPCs=F
             k = props[j]
             if ( k!='planetName' )*( k!='TICID' )*( k!='RA' )*( k!='Dec' )*(k!='Comments')*(k!='Priority'):
                 # numbers
-                rstr += '{0:.{1}f}'.format( zin[k][i], ndps[j] ).rjust( ncol[j] )
+                rstr += '{0:.{1}f},'.format( zin[k][i], ndps[j] ).rjust( ncol[j] )
             elif (k=='Priority'):
-                rstr += '{0}'.format( zin[k][i] ).center( ncol[j] )
+                rstr += '{0},'.format( zin[k][i] ).center( ncol[j] )
             elif (k=='Comments'):
                 # numbers
                 rstr += '{0}'.format( zin[k][i] ).ljust( ncol[j] )
             else: # strings
-                rstr += '{0}'.format( zin[k][i] ).rjust( ncol[j] )
+                rstr += '{0},'.format( zin[k][i] ).rjust( ncol[j] )
         return rstr
     ostr = '{0}'.format( hdr )
     for i in range( n ): # loop over each TOI
         rstr = rowStr( i, ASCII )
         ostr += rstr
-    # print(ostr)    
+
     # Write to file:
     oname = f'RVvaluesBy{SMFlag}.txt'
     if multTIC == True:
@@ -1866,39 +2055,26 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
   
     topRanked, dateStr = transmissionGridConfirmed( ipath=ipath, survey=survey, SMFlag=SMFlag, \
                                                     ASCII=True )
-    #print( 'createASCII', survey, len( topRanked ) )
-    #pdb.set_trace()
-    
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
     
-    #if multTIC:
-    #    topRanked = []
-    #    for i in list( SMRepeats(SMFlag=SMFlag, survey=survey ).values()):
-    #        for j in i:
-    #            topRanked.append(j)
-    #    nTop = len(topRanked)
-    #    topFivePredicted = False
-
     for i in range( nAll ):
         z['planetName'][i] = z['planetName'][i].replace( ' ', '' )
 
+    # Identify the indices of the top-ranked targets in each cell and add asterisks to
+    # planet names in the array if they have been flaggedas such by the addTopSMs() 
+    # routine via the transmissionGridConfirmed() call above:
     topRankedIxs = np.zeros( nTop, dtype=int )
+    #print( topRanked )
+    #pdb.set_trace()
     for i in range( nTop ):
-        ixName = topRanked[i].rfind( '[' ) # DIFFERENT TO TOIs!
-        ix = int( ixsAll[z['planetName']==topRanked[i][:ixName-1]] )
-        topRankedIxs[i] = ix
         if topRanked[i][-1]=='*':
+            ix = int( ixsAll[z['planetName']==topRanked[i][:-1]] )
             z['planetName'][ix] = '{0}*'.format( z['planetName'][ix] )
-    #if topFivePredicted:
-    #    topToPrintIxs = []
-    #    for i in range( nTop ):
-    #        ix = topRankedIxs[i]
-    #        if z['planetName'][ix][-1]=='*':
-    #            topToPrintIxs += [ ix ]
-    #else:
-    #    topToPrintIxs = topRankedIxs
+        else:
+            ix = int( ixsAll[z['planetName']==topRanked[i]] )
+        topRankedIxs[i] = ix
     topToPrintIxs = topRankedIxs        
     
     print(topToPrintIxs)
@@ -1919,49 +2095,35 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
         ASCII[p] = np.array( ASCII[p] )[ixs]
     RA_deg = RA_deg[ixs]
     Dec_deg = Dec_deg[ixs]
-
-    #print( Dec_deg )
-    #pdb.set_trace()
     
     pl = list(ASCII['planetName'])
-
-    nn = len( pl )
-    #for i in range( nn ):
-    #    print( '' )
-    #    print( ASCII['planetName'][i], ASCII['RA'][i], ASCII['Dec'][i] )
-    #    print( ASCII['planetName'][i], RA_deg[i], Dec_deg[i] )
-    #pdb.set_trace()
-    #Add exofop data to file:
-    #exoFOP = ReadExoFOPProperties()
-    #priority = []
-    #comments = []
-    
+    nn = len( pl )    
     for i,j in enumerate(pl):
         try:
             k = j.split('-')[1]
         except:
             continue
-    col0 = 'Target'.rjust( 18 ) 
-    col1 = 'RA'.center( 16 )
-    col2 = 'Dec'.center( 14 )
-    col3a = 'Vmag'.rjust( 7 )
-    col3b = 'Jmag'.rjust( 7 )
-    col3c = 'Hmag'.rjust( 7 )
-    col3d = 'Kmag'.rjust( 7 )
-    col4 = SMFlag.rjust( 10 )
-    col5 = 'K(m/s)'.rjust( 8 )
-    col6 = 'P(d)'.rjust( 10 )
-    col7 = 'Teff(K)'.rjust( 10 )
+    col0 = 'Target,'.rjust( 19 ) 
+    col1 = 'RA,'.center( 17 )
+    col2 = 'Dec,'.center( 15 )
+    col3a = 'Vmag,'.rjust( 8 )
+    col3b = 'Jmag,'.rjust( 8 )
+    col3c = 'Hmag,'.rjust( 8 )
+    col3d = 'Kmag,'.rjust( 8 )
+    col4 = '{0},'.format( SMFlag ).rjust( 11 )
+    col5 = 'K(m/s),'.rjust( 9 )
+    col6 = 'P(d),'.rjust( 11 )
+    col7 = 'Teff(K),'.rjust( 11 )
     #col7 = 'logg(CGS)'.rjust( 10 )
-    col8 = 'Rs(RS)'.rjust( 10 )
-    col9 = 'Ms(MS)'.rjust( 10 )
-    col10a = 'MpVal(ME)'.rjust( 12 )
-    col10b = 'MpSigL(ME)'.rjust( 12 )
-    col10c = 'MpSigU(ME)'.rjust( 12 )
-    col11 = 'Rp(RE)'.rjust( 10 )
-    col12 = 'Teq(K)'.rjust( 10 )
+    col8 = 'Rs(RS),'.rjust( 11 )
+    col9 = 'Ms(MS),'.rjust( 11 )
+    col10a = 'MpVal(ME),'.rjust( 13 )
+    col10b = 'MpSigL(ME),'.rjust( 13 )
+    col10c = 'MpSigU(ME),'.rjust( 13 )
+    col11 = 'Rp(RE),'.rjust( 11 )
+    col12 = 'Teq(K)'.rjust( 11 )
     ostr = '# Exoplanet Archive accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
-    ostr += '{0}{1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}'\
+    ostr += '{0} {1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}'\
             .format( col0, col1, col2, \
                      col3a, col3b, col3c, col3d, col4, \
                      col5, col6, col7, col8, col9, \
@@ -1971,7 +2133,7 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
              10, 10, 10, 10, 12, 12, 12, 10, 10 ] # column width
     ndps = [  0,  0, 0, 1, 1, 1, 1, 1, 1, \
               3,  0,  1, 1,  3, 3, 3, 1, 0 ] # decimal places
-    ostr += '\n#{0}'.format( 192*'-' )
+    ostr += '\n#{0}'.format( 210*'-' )
     m = len( props )
     def rowStr( i ):
         rstr = '\n  '
@@ -1982,6 +2144,8 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
                 rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
             else: # strings
                 rstr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
+            if j<m-1:
+                rstr = '{0},'.format( rstr )
         return rstr
     for i in range( n ): # loop over each TOI
         rstr = rowStr( i )

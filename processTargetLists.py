@@ -232,11 +232,6 @@ def readConfirmedNExScI( fpath, forceDownload=False ):
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
                                     zAll['TstarK'], zAll['Kmag'] )
     zAll['Kamp'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
-    #ix1=( zAll['planetName']=='HD 191939 b' )
-    #ix2=( zAll['planetName']=='HD 191939 c' )
-    #print( zAll['RA'][ix1], zAll['RA_deg'][ix1] )
-    #print( zAll['RA'][ix2], zAll['RA_deg'][ix2] )
-    #pdb.set_trace()
     return zAll, zMissing, dateStr
 
 def readTOIsNExScI( fpath, forceDownload=False ):
@@ -337,10 +332,6 @@ def processRawConfirmed( zRaw ):
     z = {}
     for i in range( n ):
         zi = extractProperties( zRaw, p[i] )
-        if 0:#zi['MpLowErrME']<0:
-            print( 'aaaaaa' )
-            print( zi )
-            pdb.set_trace()
         if i==0:
             z['planetName'] = [ p[i] ]
             properties = list( zi.keys() )
@@ -525,32 +516,7 @@ def fixValuesWithUncertainties( zAll, zPlanet, k, ixOthers, planetName, \
         pass
 
     return zAll
-    
-
-def fixValuesWithUncertaintiesORIGINAL( zOut, zPlanet, k, ixOthers ):
-    """
-    Subroutine for identifying planets with mass and radius values not included
-    in the default parameter set, then checking to see if these values can be
-    taken from a non-default parameter set instead.
-    """
-    nOthers = len( ixOthers )
-    cMed = np.isfinite( zOut[k[0]] )==False
-    cUpp = np.isfinite( zOut[k[1]] )==False
-    cLow = np.isfinite( zOut[k[2]] )==False
-    if cMed+cUpp+cLow:
-        medVal = np.abs( zPlanet[k[0]][ixOthers] )
-        uncsUpp = np.abs( zPlanet[k[1]][ixOthers] )
-        uncsLow = np.abs( zPlanet[k[2]][ixOthers] )
-        uncs = np.mean( np.column_stack( [ uncsLow, uncsUpp ] ), axis=1 )
-        ixs = np.isfinite( uncs )
-        n = int( ixs.sum() )
-        if n>0:
-            ixPrecise = np.arange( n )[np.argmin(uncs[ixs])]
-            zOut[k[0]] = float( zPlanet[k[0]][ixOthers[ixs][ixPrecise]] )
-            zOut[k[1]] = float( zPlanet[k[1]][ixOthers[ixs][ixPrecise]] )
-            zOut[k[2]] = float( zPlanet[k[2]][ixOthers[ixs][ixPrecise]] )
-    return zOut
-    
+        
         
 def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
     """
@@ -700,7 +666,7 @@ def readRawTOIsNExScI( fpath, forceDownload=False ):
     print( 'NOTE: Some rows may have formatting issues and will not be read.' )
     print( 'These would be flagged here. No solution to this currently.\n\n' )
     cols = t[0,:]
-
+    
     z = {}
     z['planetName'] = np.array( t[1:,cols=='toi'].flatten(), dtype='<U20' )
     z['TICID'] = np.array( t[1:,cols=='tid'].flatten(), dtype='<U20' )
@@ -718,8 +684,10 @@ def readRawTOIsNExScI( fpath, forceDownload=False ):
     z['TstarK'] = t[1:,cols=='st_teff'].flatten()
     z['loggstarCGS'] = t[1:,cols=='st_logg'].flatten()
     z['RsRS'] = t[1:,cols=='st_rad'].flatten()
+    z['RsUppErrRS'] = t[1:,cols=='st_raderr1'].flatten()
+    z['RsLowErrRS'] = t[1:,cols=='st_raderr2'].flatten()
     z['Tmag'] = t[1:,cols=='st_tmag'].flatten()
-   
+    
     # TODO = Request JHK mags are added.
     TFOP = t[1:,cols=='tfopwg_disp'].flatten()
     ixs = ( TFOP!='KP' )*( TFOP!='FP' )*( TFOP!='FA' )
@@ -750,7 +718,7 @@ def readRawTOIsNExScI( fpath, forceDownload=False ):
     z['RpUppErrRJ'] = z['RpUppErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpLowErrRJ'] = z['RpLowErrRE']*( Utils.REARTH_SI/Utils.RJUP_SI )
     z['RpRs'] = ( z['RpValRE']*Utils.REARTH_SI )/( z['RsRS']*Utils.RSUN_SI )
-
+    
     return z
 
 def checkTOIsTESSCP ( zIN, forceDownload ):

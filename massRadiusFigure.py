@@ -13,31 +13,44 @@ def Confirmed( ipath='confirmedProperties.pkl' ):
     ifile = open( ipath, 'rb' )
     z = pickle.load( ifile )
     ifile.close()
+    pl = z['allVals']['planetName']
     TeqK = z['allVals']['TeqK']
     MpME = z['allVals']['MpValME']
     RpRE = z['allVals']['RpValRE']
     ixs = ( np.isfinite( TeqK ) )*( np.isfinite( MpME ) )*( np.isfinite( RpRE ) )
+    pl = pl[ixs]
     TeqK = TeqK[ixs]
     MpME = MpME[ixs]
     RpRE = RpRE[ixs]
     MpLSigME = z['allVals']['MpLowErrME'][ixs]
     nsigMpME = 3.0
     ixs = ( MpME/MpLSigME>nsigMpME )
+    pl = pl[ixs]
     TeqK = TeqK[ixs]
     MpME = MpME[ixs]
     RpRE = RpRE[ixs]
-    fig, ax, cbAx, cb, cmap = createAxis( TeqK )
-    plotData( ax, cmap, MpME, RpRE, TeqK, ms=ms, Tupp=3000 )
+    Tupp = 3000
+    fig, ax, cbAx, cb, cmap = createAxis( TeqK, Tupp=Tupp )
+    plotData( ax, cmap, MpME, RpRE, TeqK, ms=ms, Tupp=Tupp )
     addIsoDensityContours( ax )
-    plotEmpiricalRelation( ax )
     titleStr = 'Planets with published masses ($>{0:.0f}\\sigma$)'.format( nsigMpME )
     ax.text( 0.3, 23, titleStr, weight='normal', fontsize=18, \
              horizontalalignment='left', verticalalignment='bottom' )
-    oname = 'confirmedPlanetsMassRadius.pdf'
-    opath = os.path.join( FIGDIR, oname )
-    fig.savefig( opath )
-    print( '\nSaved:\n{0}\n'.format( opath ) )
-    return opath
+    oname1 = 'confirmedPlanetsMassRadius_noEmpiricalRelation.pdf'
+    opath1a = os.path.join( FIGDIR, oname1 )
+    opath1b = opath1a.replace( '.pdf', '.png' )
+    fig.savefig( opath1a )
+    fig.savefig( opath1b )
+    
+    plotEmpiricalRelation( ax )
+    oname2a = 'confirmedPlanetsMassRadius.pdf'
+    opath2a = os.path.join( FIGDIR, oname2a )
+    opath2b = opath2a.replace( '.pdf', '.png' )
+    fig.savefig( opath2a )
+    fig.savefig( opath2b )
+    print( '\nSaved:\n{0}\n{1}\n{2}\n{3}\n'.format( opath1a, opath2a, opath1b, opath2b ) )
+    opaths = [ opath1a, opath1b, opath2a, opath2b ]
+    return opaths
 
 
 def plotEmpiricalRelation( ax ):
@@ -64,7 +77,7 @@ def plotData( ax, cmap, MpME, RpRE, TeqK, ms=10, Tupp=3000 ):
         ax.plot( [MpME[i]], [RpRE[i]], 'o', mfc=c, mec=c, ms=ms, alpha=0.7, zorder=10 )
     return None
 
-def createAxis( TeqK ):
+def createAxis( TeqK, Tupp=3000 ):
     label_fs = 18
     tick_fs = 16
     figw = 14
@@ -74,7 +87,7 @@ def createAxis( TeqK ):
     axw = 0.80
     axh = 0.85
     TeqKmin = int( 100*np.floor( TeqK.min()/100. ) )
-    TeqKmax = int( 100*np.ceil( TeqK.max()/100. ) )
+    TeqKmax = min( [ Tupp, int( 100*np.ceil( TeqK.max()/100. ) ) ] )
     TeqKrange = TeqKmax-TeqKmin
     #cmap = matplotlib.cm.Paired
     cmap = matplotlib.cm.get_cmap( 'jet', 8 )
