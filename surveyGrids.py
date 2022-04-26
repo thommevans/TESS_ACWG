@@ -1370,7 +1370,7 @@ def plotTeqRpScatter( plDict, SMFlag, ms=8, alpha=1, \
     if applySMcuts==True:
         fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
                   horizontalalignment='left', verticalalignment='bottom' )
-        otherNotes = 'Grey points do not meet {0} thresholds'.format( SM[0] )
+        otherNotes = 'Grey points do not meet {0} thresholds'.format( SMFlag )
         fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
                   fontsize=14, horizontalalignment='left', verticalalignment='top' )
         
@@ -1881,14 +1881,13 @@ def CreateASCII_TOIs( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', only
 
     topRankedIxs = np.zeros( nTop, dtype=int )
     for i in range( nTop ):
-        print( topRanked[i] )
-        if 0:
+        #print( topRanked[i] )
+        if 1:
             ixName = topRanked[i].find( ')' )
             ix = int( ixsAll[z['planetName']==topRanked[i][:ixName+1]] )
             topRankedIxs[i] = ix
             if topRanked[i][-1]=='*':
                 z['planetName'][ix] = '{0}*'.format( z['planetName'][ix] )
-    pdb.set_trace()
     if topFivePredicted:
         topToPrintIxs = []
         for i in range( nTop ):
@@ -1898,7 +1897,7 @@ def CreateASCII_TOIs( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', only
     else:
         topToPrintIxs = topRankedIxs
     
-    print(topToPrintIxs)
+    #print(topToPrintIxs)
     n = len( topToPrintIxs )
     
     # Dictionary of properties for top-ranked to be written to ASCII output:
@@ -2003,7 +2002,7 @@ def CreateASCII_TOIs( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', only
         ostr += rstr
 
     # Write to file:
-    oname = f'RVvaluesBy{SMFlag}.txt'
+    oname = 'RVvaluesBy{0}_{1}.txt'.format( SMFlag, survey['obsSample'] )
     if multTIC == True:
         oname = oname.replace('.txt', '_Multis.txt')
     else:
@@ -2070,7 +2069,8 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
         else:
             ix = int( ixsAll[z['planetName']==topRanked[i]] )
         topRankedIxs[i] = ix
-    topToPrintIxs = topRankedIxs        
+    topToPrintIxs = topRankedIxs
+    n = len( topToPrintIxs )
     
     # Dictionary of properties for top-ranked to be written to ASCII output:
     ASCII = {} 
@@ -2114,9 +2114,9 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
     col10c = 'MpSigU(ME),'.rjust( 13 )
     col11 = 'Rp(RE),'.rjust( 11 )
     col12 = 'Teq(K)'.rjust( 11 )
-    ostr = '# Exoplanet Archive accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
-    ostr += '{0} {1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}'\
-            .format( col0, col1, col2, \
+    hdr = '# Exoplanet Archive accessed on date (YYYY-MM-DD): {0}\n# '.format( dateStr )
+    hdr += '{0} {1}{2}{3}{4}{5}{6}{7}{8}{9}{10}{11}{12}{13}{14}{15}{16}{17}'\
+           .format( col0, col1, col2, \
                      col3a, col3b, col3c, col3d, col4, \
                      col5, col6, col7, col8, col9, \
                      col10a, col10b, col10c, \
@@ -2125,27 +2125,28 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
              10, 10, 10, 10, 12, 12, 12, 10, 10 ] # column width
     ndps = [  0,  0, 0, 1, 1, 1, 1, 1, 1, \
               3,  0,  1, 1,  3, 3, 3, 1, 0 ] # decimal places
-    ostr += '\n#{0}'.format( 210*'-' )
+    hdr += '\n#{0}'.format( 210*'-' )
+    ostr = '{0}'.format( hdr )    
     m = len( props )
-    def rowStr( i ):
+    def rowStr( i, zin ):
         rstr = '\n  '
         for j in range( m ): # loop over each property
             k = props[j]
             if ( k!='planetName' )*( k!='RA' )*( k!='Dec' ):
                 # numbers
-                rstr += '{0:.{1}f}'.format( ASCII[k][i], ndps[j] ).rjust( ncol[j] )
+                rstr += '{0:.{1}f}'.format( zin[k][i], ndps[j] ).rjust( ncol[j] )
             else: # strings
-                rstr += '{0}'.format( ASCII[k][i] ).rjust( ncol[j] )
+                rstr += '{0}'.format( zin[k][i] ).rjust( ncol[j] )
             if j<m-1:
                 rstr = '{0},'.format( rstr )
         return rstr
 
     for i in range( npl ): # loop over each planet
-        rstr = rowStr( i )
+        rstr = rowStr( i, ASCII )
         ostr += rstr
 
     # Write to file:
-    oname = 'confirmedPlanets_{0}.txt'.format( SMFlag )
+    oname = 'RVvaluesBy{0}_confirmedPlanets_{1}.txt'.format( SMFlag, survey['obsSample'] )
     #if multTIC == True:
     #    oname = oname.replace('.txt', '_Multis.txt')
     #else:
@@ -2156,14 +2157,31 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
     odir = os.path.join( os.getcwd(), 'ASCII' )
     if os.path.isdir( odir )==False:
         os.makedirs( odir )
-    opath = os.path.join( odir, oname )
+    opath1 = os.path.join( odir, oname )
 
+    # Now write out the same file but ranked by SM:
+    ixs = np.arange( n )[np.argsort( ASCII[SMFlag] )[::-1]]
+    for k in props:
+        ASCII[k] = ASCII[k][ixs]
+    ostr2 = '{0}'.format( hdr )
+    for i in range( n ): # loop over each TOI
+        rstr = rowStr( i, ASCII )
+        ostr2 += rstr
+    opath2 = opath1.replace( '.txt', '_ranked{0}.txt'.format( SMFlag ) )
+    ofile = open( opath2, 'w' )
+    ofile.write( ostr2 )
+    ofile.close()
+
+    print( '\nSaved:\n{0}\n{1}'.format( opath1, opath2 ) )
+    return opath1, opath2
+
+    
     ofile = open( opath, 'w' )
     ofile.write( ostr )
     ofile.close()
     print( '\nSaved:\n{0}'.format( opath ) )
 
-    return opath
+    return opath1, opath2
 
 def TeqK_ExoFOPvsKempton (Kempton, ExoFOP):
     """

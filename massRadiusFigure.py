@@ -8,7 +8,7 @@ from . import Utils
 
 FIGDIR = os.path.join( os.getcwd(), 'Figures' )
 
-def Confirmed( ipath='confirmedProperties.pkl' ):
+def Confirmed( ipath='confirmedProperties.pkl', weighting='None', alpha='default' ):
     ms = 10
     ifile = open( ipath, 'rb' )
     z = pickle.load( ifile )
@@ -17,34 +17,62 @@ def Confirmed( ipath='confirmedProperties.pkl' ):
     TeqK = z['allVals']['TeqK']
     MpME = z['allVals']['MpValME']
     RpRE = z['allVals']['RpValRE']
+    b = z['allVals']['b']
+    RpRs = z['allVals']['RpRs']
+    if weighting=='TSM':
+        SM = z['allVals']['TSM']
+    elif weighting=='ESM':
+        SM = z['allVals']['ESM']
+    else:
+        SM = None
     ixs = ( np.isfinite( TeqK ) )*( np.isfinite( MpME ) )*( np.isfinite( RpRE ) )
     pl = pl[ixs]
     TeqK = TeqK[ixs]
     MpME = MpME[ixs]
     RpRE = RpRE[ixs]
     MpLSigME = z['allVals']['MpLowErrME'][ixs]
-    nsigMpME = 3.0
-    ixs = ( MpME/MpLSigME>nsigMpME )
-    pl = pl[ixs]
-    TeqK = TeqK[ixs]
-    MpME = MpME[ixs]
-    RpRE = RpRE[ixs]
+    b = b[ixs]
+    RpRs = RpRs[ixs]
+    if weighting=='TSM':
+        SM = SM[ixs]
+    elif weighting=='ESM':
+        SM = SM[ixs]
+    if 1:#weighting!='ESM':
+        # Unless considering ESM, remove those
+        # without 3-sigma published masses:
+        nsigMpME = 3.0
+        ixs = ( MpME/MpLSigME>nsigMpME )
+        pl = pl[ixs]
+        TeqK = TeqK[ixs]
+        MpME = MpME[ixs]
+        RpRE = RpRE[ixs]
+        b = b[ixs]
+        RpRs = RpRs[ixs]
+        if weighting=='TSM':
+            SM = SM[ixs]
+        elif weighting=='ESM':
+            SM = SM[ixs]
+        titleStr = 'Planets with published masses ($>{0:.0f}\\sigma$)'.format( nsigMpME )
+    else:
+        titleStr = ''
     Tupp = 3000
     fig, ax, cbAx, cb, cmap = createAxis( TeqK, Tupp=Tupp )
-    plotData( ax, cmap, MpME, RpRE, TeqK, ms=ms, Tupp=Tupp )
+    plotData( ax, cmap, pl, MpME, RpRE, TeqK, SM, b, RpRs, ms=ms, Tupp=Tupp, weighting=weighting, alpha=alpha )
     addIsoDensityContours( ax )
-    titleStr = 'Planets with published masses ($>{0:.0f}\\sigma$)'.format( nsigMpME )
     ax.text( 0.3, 23, titleStr, weight='normal', fontsize=18, \
              horizontalalignment='left', verticalalignment='bottom' )
     oname1 = 'confirmedPlanetsMassRadius_noEmpiricalRelation.pdf'
+    oname2 = 'confirmedPlanetsMassRadius.pdf'
+    if weighting!='None':
+        oname1 = oname1.replace( '.pdf', '_{0}.pdf'.format( weighting ) )
+        oname2 = oname2.replace( '.pdf', '_{0}.pdf'.format( weighting ) )
     opath1a = os.path.join( FIGDIR, oname1 )
     opath1b = opath1a.replace( '.pdf', '.png' )
     fig.savefig( opath1a )
     fig.savefig( opath1b )
     
     plotEmpiricalRelation( ax )
-    oname2a = 'confirmedPlanetsMassRadius.pdf'
-    opath2a = os.path.join( FIGDIR, oname2a )
+    opath2a = os.path.join( FIGDIR, oname2 )
     opath2b = opath2a.replace( '.pdf', '.png' )
     fig.savefig( opath2a )
     fig.savefig( opath2b )
@@ -64,17 +92,48 @@ def plotEmpiricalRelation( ax ):
              horizontalalignment='left', verticalalignment='center' )
     return None
 
-def plotData( ax, cmap, MpME, RpRE, TeqK, ms=10, Tupp=3000 ):
+def plotData( ax, cmap, pl, MpME, RpRE, TeqK, SM, b, RpRs, ms=10, Tupp=3000, weighting='None', alpha='default' ):
     cDat = TeqK*np.ones_like( TeqK )
     ixs = cDat>Tupp
     cDat[ixs] = Tupp
     Tmin = int( 100*np.floor( cDat.min()/100. ) )
     Tmax = int( 100*np.ceil( cDat.max()/100. ) )
     Trange = Tmax-Tmin
+    if weighting!='None':
+        alphaMax = 1
+        ixs = np.isfinite( SM )
+        pl = pl[ixs]
+        MpME = MpME[ixs]
+        RpRE = RpRE[ixs]
+        cDat = cDat[ixs]
+        SM = SM[ixs]
+        b = b[ixs]
+        RpRs = RpRs[ixs]
+        SMmin = 97 # to include HAT-P-7b as the lower cutoff
+        ixs = ( SM>SMmin )*( b+RpRs<1 )
+        pl = pl[ixs]
+        MpME = MpME[ixs]
+        RpRE = RpRE[ixs]
+        cDat = cDat[ixs]
+        SM = SM[ixs]
+        # To avoid outlier TSM/ESM values skewing the colourscale,
+        # set TSM/ESM=250 as the maximum for the purpose of defining
+        # the colourscale:
+        excellentSM = 250
+        #SM[SM>excellentSM] = excellentSM
+        alpha0 = alphaMax*np.ones_like(SM)#*SM/SM.max()
+    else:
+        alpha0 = 0.7*np.ones_like( MpME )
+    if alpha=='default':
+        alpha = alpha0
+    else:
+        alpha = alpha*np.ones_like( cDat )
     n = len( MpME )
     for i in range( n ):
         c = cmap( ( cDat[i]-Tmin )/Trange )
-        ax.plot( [MpME[i]], [RpRE[i]], 'o', mfc=c, mec=c, ms=ms, alpha=0.7, zorder=10 )
+        ax.plot( [MpME[i]], [RpRE[i]], 'o', mfc=c, mec=c, ms=ms, alpha=alpha[i], zorder=10 )
+        #if weighting=='ESM': # TEMPORARY
+        #    ax.text( MpME[i], RpRE[i], pl[i] )
     return None
 
 def createAxis( TeqK, Tupp=3000 ):
