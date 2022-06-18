@@ -18,7 +18,8 @@ def targetsWithPublishedConfirmation( forceDownload=False ):
     default_query = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+*+from+ps+where+tran_flag+=+1&format=csv"
     
     add_few_elements = ','.join(
-        ['pl_name','default_flag','disc_facility','tran_flag','pl_orbper','pl_orbpererr1','pl_orbpererr2',\
+        ['pl_name','default_flag','discoverymethod','disc_year','disc_facility','tran_flag',\
+         'pl_orbper','pl_orbpererr1','pl_orbpererr2',\
          'pl_orbperlim','pl_orbsmax','pl_orbsmaxerr1','pl_orbsmaxerr2','pl_orbsmaxlim','pl_rade',\
          'pl_radeerr1','pl_radeerr2','pl_radelim','pl_masse','pl_masseerr1','pl_masseerr2','pl_masselim',\
          'pl_bmassprov','pl_orbeccen','pl_orbeccenerr1','pl_orbeccenerr2','pl_orbeccenlim','pl_insol',\

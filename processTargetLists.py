@@ -27,20 +27,21 @@ IPATH_BARCLAY2018_V1 = 'detected_planets.csv'
 
 TEFFK_SUN = 5800
 
-def Confirmed( csvIpath='', pklOdir='', forceDownload=False ):
-    zAll, zMissing, dateStr = readConfirmedNExScI( csvIpath, forceDownload=forceDownload )
-    
+def Confirmed( csvIpath='', pklOdir='', readExisting=False ):
+    zAll, zMissing, dateStr = readConfirmedNExScI( csvIpath, readExisting=readExisting )
     zOut = { 'missingProperties':zMissing, 'allVals':zAll, 'dateStr':dateStr }
     oname = 'confirmedProperties.pkl'
     odir = os.getcwd()
     opath = os.path.join( odir, oname )
-    if not forceDownload:
+    #if not forceDownload:
+    if readExisting==True:
         if os.path.exists( opath ):
             pklAge = os.path.getmtime(opath)
             if (time.time() - pklAge)/3600 < 24:
                 ostr = '\n{0}\nFile exists and has been updated within last 24hrs'\
                        .format( opath )
-                ostr += ' (Set forceDownload=True to force update)\n'
+                #ostr += ' (Set forceDownload=True to force update)\n'
+                ostr += ' (Set readExisting=False to force update)\n'
                 print( ostr )
                 return opath
     ofile = open( opath, 'wb' )
@@ -213,10 +214,11 @@ def getDateStr( fpath, whichList='Confirmed' ):
     dateStr = fname[ix0:ix1].replace( '.', '/' )
     return dateStr
 
-def readConfirmedNExScI( fpath, forceDownload=False ):
+def readConfirmedNExScI( fpath, readExisting=False ):
     dateStr = getDateStr( fpath, whichList='Confirmed' )
-    zRaw = readRawConfirmedNExScI( fpath, forceDownload=forceDownload )
-    if not forceDownload:
+    zRaw = readRawConfirmedNExScI( fpath, readExisting=readExisting )
+    #if not forceDownload:
+    if readExisting==True:
         if 'allVals' in zRaw:
             z = pickle.load(open('confirmedProperties.pkl', 'rb'))
             zMissing, zAll, dateStr = [i for i in z.values()]
@@ -420,7 +422,9 @@ def extractProperties( zRaw, planetName ):
     # Properties without uncertainties are props1:
     props1 = [ 'Pday', 'aAU', 'ecc', 'inclDeg', 'b', 'distParsec', \
                'Insol', 'T14hr', 'aRs', 'RpRs', 'TstarK', 'RsRS', 'MsMS', \
-               'Vmag', 'Jmag', 'Hmag', 'Kmag', 'discoveredByTESS' ]
+               'Vmag', 'Jmag', 'Hmag', 'Kmag', \
+               'discoveryMethod', 'discoveryFacility', \
+               'discoveryYear', 'discoveredByTESS' ]
     
     # Properties with uncertainties are props2:
     props2 = [ 'RpValRE', 'RpUppErrRE', 'RpLowErrRE', \
@@ -436,7 +440,12 @@ def extractProperties( zRaw, planetName ):
     ixDefault = ( zPlanet['defaultFlag']==1 )
     zOut = {}
     for k in props1:
-        zOut[k] = np.abs( float( zPlanet[k][ixDefault] ) )
+        if ( k=='discoveryYear' )+( k=='discoveredByTESS' ):
+            zOut[k] = int( zPlanet[k][ixDefault] )
+        elif ( k=='discoveryMethod' )+( k=='discoveryFacility' ):
+            zOut[k] = str( zPlanet[k][ixDefault] )
+        else:
+            zOut[k] = np.abs( float( zPlanet[k][ixDefault] ) )
     for k in props2:
         zOut[k] = np.abs( float( zPlanet[k][ixDefault] ) )
         #if planetName=='EPIC 211945201 b':
@@ -518,7 +527,7 @@ def fixValuesWithUncertainties( zAll, zPlanet, k, ixOthers, planetName, \
     return zAll
         
         
-def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
+def readRawConfirmedNExScI( csvIpath, readExisting=False ):
     """
     Instructions for downloading table from NASA Exoplanet Archive:
     1. Remove condition 'Default parameter set = 1'.
@@ -557,7 +566,7 @@ def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
     4. Set condition 'Detected by transits = 1'.
     5. Download table as CSV. Make sure 'Values only' is *not* checked.
     """
-    if not forceDownload:
+    if readExisting==True:
         fpath = f'{os.getcwd()}/confirmedProperties.pkl'
         if os.path.exists(fpath):
             pklAge = os.path.getmtime(fpath)
@@ -571,16 +580,18 @@ def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
     print( 'NOTE: Some rows may have formatting issues and will not be read.' )
     print( 'These would be flagged here. No solution to this currently.\n\n' )
     cols = t[0,:]
-
+    
     z = {}
-
+    
     z['planetName'] = t[1:,cols=='pl_name'].flatten()
     z['RA'] = t[1:,cols=='rastr'].flatten()
     z['Dec'] = t[1:,cols=='decstr'].flatten()
     z['RA_deg'] = t[1:,cols=='ra'].flatten()
     z['Dec_deg'] = t[1:,cols=='dec'].flatten()
 
+    z['discoveryMethod'] = t[1:,cols=='discoverymethod'].flatten()
     z['discoveryFacility'] = t[1:,cols=='disc_facility'].flatten()
+    z['discoveryYear'] = t[1:,cols=='disc_year'].flatten()
     z['defaultFlag'] = t[1:,cols=='default_flag'].flatten()
     z['Pday'] = t[1:,cols=='pl_orbper'].flatten()
     z['aAU'] = t[1:,cols=='pl_orbsmax'].flatten()
@@ -639,13 +650,12 @@ def readRawConfirmedNExScI( csvIpath, forceDownload=False ):
             continue
         elif ( k=='RA' )+( k=='Dec' ):
             z[k] = np.array( z[k], dtype=str )
-        #elif ( k=='RA_deg' )+( k=='Dec_deg' ):
-        #    z[k] = np.array( z[k], dtype=float )
-        elif ( k=='defaultFlag' )+( k=='discoveredByTESS' ):
+        elif ( k=='defaultFlag' )+( k=='discoveryYear' )+( k=='discoveredByTESS' ):
             z[k] = np.array( z[k], dtype=int )
         else:
             z[k] = convertMissing( z[k] )
             z[k] = np.array( z[k], dtype=float )
+
     return z
 
 
