@@ -418,7 +418,12 @@ def correctImpact( z ):
 
 
 def extractProperties( zRaw, planetName ):
-
+    """
+    This routine is applied to one planet at a time, which
+    may have multiple property entries on Exoplanet Archive.
+    """
+    
+    
     # Properties without uncertainties are props1:
     props1 = [ 'Pday', 'aAU', 'ecc', 'inclDeg', 'b', 'distParsec', \
                'Insol', 'T14hr', 'aRs', 'RpRs', 'TstarK', 'RsRS', 'MsMS', \
@@ -443,7 +448,7 @@ def extractProperties( zRaw, planetName ):
         if ( k=='discoveryYear' )+( k=='discoveredByTESS' ):
             zOut[k] = int( zPlanet[k][ixDefault] )
         elif ( k=='discoveryMethod' )+( k=='discoveryFacility' ):
-            zOut[k] = str( zPlanet[k][ixDefault] )
+            zOut[k] = str( zPlanet[k][ixDefault][0] )
         else:
             zOut[k] = np.abs( float( zPlanet[k][ixDefault] ) )
     for k in props2:
@@ -463,7 +468,9 @@ def extractProperties( zRaw, planetName ):
         # parameter set does not include a value, try to insert a value from
         # a non-default parameter set instead:
         for k in props1:
-            if np.isfinite( zOut[k] )==False:
+            if type( zOut[k] )==str: # np.isfinite() fails if string passed as input
+                continue
+            elif np.isfinite( zOut[k] )==False:
                 for i in range( nOthers ):
                     if np.isfinite( zPlanet[k][ixOthers[i]] ):
                         zOut[k] = float( zPlanet[k][ixOthers[i]] )
@@ -646,7 +653,7 @@ def readRawConfirmedNExScI( csvIpath, readExisting=False ):
     z['discoveredByTESS'][ixs] = 1
     for k in list( z.keys() ):
         if ( k=='planetName' )+( k=='MpProvenance' )\
-           +( k=='discoveryFacility' ):
+           +( k=='discoveryFacility' )+( k=='discoveryMethod' ):
             continue
         elif ( k=='RA' )+( k=='Dec' ):
             z[k] = np.array( z[k], dtype=str )
@@ -655,7 +662,6 @@ def readRawConfirmedNExScI( csvIpath, readExisting=False ):
         else:
             z[k] = convertMissing( z[k] )
             z[k] = np.array( z[k], dtype=float )
-
     return z
 
 
