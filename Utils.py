@@ -25,6 +25,326 @@ REARTH_SI = 6.371e6
 AU_SI = 1.496e11
 GRAV_SI = 6.67428e-11 # gravitational constant in m^3 kg^-1 s^-2
 
+def getBestInClassColor( i ):
+    if i==1:
+        backgroundColor = np.array( [178,223,138] )/256. # 'Green'
+    elif i==2:
+        backgroundColor = np.array( [253,191,111] )/256. # 'Orange'
+    elif i==3:
+        backgroundColor = np.array( [251,154,153] )/256. # 'Red'
+    else:
+        pdb.set_trace()
+    return backgroundColor
+
+
+def writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, plTESS, TstarK, TOIGrid, SMFlag, \
+                     plDict, SMVals, predSM, ASCII, bestInClass, sMass, xtxt, text_fs, xsymb ):
+    """
+    This is a VERY hacked up routine with a stupid-long argument list, created to handle the
+    BestInClass plots, because it does an additional sorting operation within each grid cell
+    according to the mass status of the planet. In the future, this should be cleaned up...
+    """
+    ms = 8
+
+    plStrs = []
+    SMStrs = []
+    TstarKs = []
+    for k in range( nwrite ): #For each planet (max 5)
+        plStr = pl[ixs][k].replace( ' ', '' )
+        if ( plStr=='TOI-' )*( plStr not in plTESS ):
+            # Because BestInClass has confirmed planets with names
+            # of the form TOI-XXX, which we want to print in full,
+            # and also unconfirmed TOIs, for which we only want to
+            # print the TOI number:
+            unconfirmedTOI = True
+        else:
+            unconfirmedTOI = False
+        if TOIGrid==True:
+            t1 = time.time()
+            if SMFlag=='TSM':
+                SMUnc = estimateUncertaintyTSM( plDict, ixs, k )
+            elif SMFlag=='ESM':
+                SMUnc = estimateUncertaintyESM( plDict, ixs, k )
+            plStr = '{0}'.format( plStr )
+            SMStr = '[{0:.0f}(-{1:.0f},+{2:.0f})]'\
+                    .format( SMVals[ixs][k], SMUnc[0], SMUnc[1] )
+            t2 = time.time()
+        else:
+            SMStr = '[{0:.0f}]'.format( SMVals[ixs][k] )
+        if SMVals[ixs][k] >= predSM:
+            plStr += '*'
+        plNames.append( plStr )
+        SMStrs += [ SMStr ]
+        if not ASCII:
+
+            # If this is a TOI grid plot, remove the
+            # redundant prefix and suffix:
+            if TOIGrid==True:
+                plStr = plStr.replace( 'TOI-', '' )
+                ix1 = plStr.find( '(' )
+                ix2 = plStr.find( ')' )
+                plStr = plStr[:ix1] + plStr[ix2+1:]
+            elif ( bestInClass==True )*unconfirmedTOI:
+                if plStr[:4]=='TOI-':
+                    plStr = plStr.replace( 'TOI-', '' )
+                    ix1 = plStr.find( '(' )
+                    ix2 = plStr.find( ')' )
+                    plStr = plStr[:ix1] + plStr[ix2+1:]
+            plStrs += [ plStr ]
+            TstarKs += [ TstarK[ixs][k] ]
+
+    if not ASCII:
+        # Edit text to write on axes, order according to
+        # mass status if best-in-class:
+        plStrs = np.array( plStrs, dtype=str )
+        SMStrs = np.array( SMStrs, dtype=str )
+        TstarKs = np.array( TstarKs, dtype=float )
+        if bestInClass==True:
+            ixsWrite = np.argsort( sMass[ixs] )
+            plStrs = plStrs[ixsWrite]
+            SMStrs = SMStrs[ixsWrite]
+            TstarKs = TstarKs[ixsWrite]
+            sMassOrdered = sMass[ixs][ixsWrite]
+        for k in range( nwrite ):
+            ytxt = y0-k*dy
+            plStr = plStrs[k]
+            SMStr = SMStrs[k]
+            nStr = len( plStr )
+            fullStr = '{0} {1}'.format( plStr, SMStr )
+
+            # Silver if APC or CP
+            if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ): 
+                c = 'Silver'
+                wt = 'normal'
+            else: # Black if PC
+                c = 'Black'
+                wt = 'normal'
+            if plTESS != None:
+                if plStr.split(' ')[0] in plTESS:
+                    wt = 'bold'
+            if TOIGrid==True:
+                wt = 'normal'
+            if bestInClass==True:
+                bc = getBestInClassColor( sMassOrdered[k] )
+            else:
+                bc = 'none'
+            ax.text( xtxt, ytxt, fullStr, fontsize=text_fs, \
+                     weight=wt, color=c, backgroundcolor=bc, \
+                     horizontalalignment='left', verticalalignment='center' )
+            ck = getStarColor( TstarKs[k] )
+            ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
+        
+    return plNames
+
+
+def legendBestInClass( fig ):
+    ytxt0 = 0.96
+    bc = {}
+    for i in [1,2,3]:
+        bc[i] = getBestInClassColor( i )
+    lab = { 1:'Confirmed, has $>5\\sigma$ mass', \
+            2:'Confirmed, lacking $>5\\sigma$ mass', \
+            3:'Unconfirmed TOI' }
+    xtxt = 0.3
+    for i in [1,2,3]:
+        print( i, xtxt )
+        fig.text( xtxt, ytxt0, lab[i], fontsize=14, \
+                  weight='normal', color='Black', backgroundcolor=bc[i], \
+                  horizontalalignment='left', verticalalignment='center' )
+        xtxt += ( len( lab[i] )+10 )*0.005
+    return None
+
+
+def combineConfirmedAndTOIs( plDictConfirmed, plDictTOIs ):
+    keysC = list( plDictConfirmed.keys() )
+    keysT = list( plDictTOIs.keys() )
+    nkeysT = len( keysT )
+    ignoreKeys = [ 'Tmag', 'TICID', 'TeqK_exofop', 'RA_hr' ]
+    zCombined = {}
+    nT = len( plDictTOIs['planetName'] )
+    nC = len( plDictConfirmed['planetName'] )
+    nansC = np.nan*np.ones( nC )
+    for i in range( nkeysT ):
+        k = keysT[i]
+        if k not in ignoreKeys:
+            if k in keysC:
+                zCombined[k] = np.concatenate( [ plDictConfirmed[k], plDictTOIs[k] ] )
+            elif k=='RpUncRE':
+                lSigC = np.abs( plDictConfirmed['RpLsigRE'] )
+                uSigC = np.abs( plDictConfirmed['RpUsigRE'] )
+                RpUncC = np.max( np.column_stack( [ lSigC, uSigC ] ), axis=1 )
+                zCombined[k] = np.concatenate( [ RpUncC, plDictTOIs[k] ] )
+            else:
+                zCombined[k] = np.concatenate( [ nansC, plDictTOIs[k] ] )
+    # TESS-discovered *confirmed* planets are 1, all others (including non-confirmed
+    # TOIs) are 0:
+    zCombined['confirmedTESS'] = np.concatenate( [ plDictConfirmed['TESS'], \
+                                                   np.zeros( nT ) ] )
+    # Indexes to identify three subgroups:
+    #  1 = Confirmed, with >5-sigma mass.
+    #  2 = Confirmed, without >5-sigma mass.
+    #  3 = TOIs, without any mass
+    mC = np.ones( nC, dtype=int )
+    mVal = plDictConfirmed['MpValME']
+    mUnc = plDictConfirmed['MpLsigME']
+    nsigC = np.abs( mVal/mUnc )
+    mC[(nsigC<5)+(nsigC==np.nan)] = 2 
+    mT = 3*np.ones( nT, dtype=int ) 
+    zCombined['statusMass'] = np.concatenate( [ mC, mT ] )
+    return zCombined
+
+def applyPreCutsTOIs( z, preCutsFunc, obsSample, limitsRA_hr, limitsDec_deg, onlyPCs=True ):
+    n0 = len( z['planetName'] )
+    ixs0, cutStr, titleStr = preCutsFunc( z, obsSample )
+    # Exclude targets outside the RA limits:
+    RAStr, RAMin_hr, RAMax_hr = processRARestriction( limitsRA_hr[0], limitsRA_hr[1] )
+    ixsRA = ( z['RA_hr'][ixs0]>=RAMin_hr )*( z['RA_hr'][ixs0]<=RAMax_hr )
+    # Exclude targets outside the Dec limits:
+    DecStr, DecMin_deg, DecMax_deg = processDecRestriction( limitsDec_deg[0], \
+                                                            limitsDec_deg[1] )
+    ixsDec = ( z['Dec_deg'][ixs0]>=DecMin_deg )*( z['Dec_deg'][ixs0]<=DecMax_deg )
+    RADecStr = '{0}\n{1}\nNo bright limits have been applied\n'.format( RAStr, DecStr )
+    # Exclude targets with large radius uncertainties:
+    RpUncMax = 0.25*z['RpValRE'] # Rp uncertainties <25% of radius value
+    RpUncMax[RpUncMax<1] = 1 # except if that's <1RE, then set to 1RE
+    ixsRp = ( z['RpUncRE']<RpUncMax ) # only keep those with Rp uncertainties in this range
+    print( '\nDiscarding {0:.0f} (out of {1:.0f}) TOIs due to large ExoFOP radius uncertainties\n'\
+           .format( len( ixsRp )-ixsRp.sum(), len( ixsRp ) ) )
+    if onlyPCs == True:
+        ixsPCs = ( [i[-4:]=='(PC)' for i in z['planetName'][ixs0]] )
+        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsRp*ixsPCs]
+    else:
+        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsRp]
+    # Apply cuts to all dictionary arrays:
+    for k in list( z.keys() ):
+        z[k] = z[k][ixs]
+    return z, cutStr, titleStr, RADecStr
+
+
+def estimateUncertaintyTSM( plDict, ixs, k ):
+    """
+    Monte Carlo estimates for TSM uncertainties.
+    
+    Samples Gaussian distributions for Rp and Rs.
+    Holds Teq, Mp, and Jmag fixed.
+    """
+    RsRS = plDict['RsRS'][ixs][k]
+    sigRsRS = plDict['RsUncRS'][ixs][k]
+    if np.isnan( sigRsRS ):
+        sigRsRS = 0.2*RsRS # arbitrarily set to 20% of radius value SMTP Error (220): Authentification failed
+    RpRE = plDict['RpValRE'][ixs][k]
+    sigRpRE = plDict['RpUncRE'][ixs][k]
+    MpME = plDict['MpValME'][ixs][k]
+    Jmag = plDict['Jmag'][ixs][k]
+    TeqK = plDict['TeqK'][ixs][k]
+    TstarK = plDict['TstarK'][ixs][k]
+    aRs = plDict['aRs'][ixs][k]
+    TSM = plDict['SM'][ixs][k]
+
+    n = 3000
+    zMp = MpME*np.ones( n ) #0.5*MpME + MpME*np.random.random( n )
+    zRp = RpRE + sigRpRE*np.random.randn( n )
+    zRs = RsRS + sigRsRS*np.random.randn( n )
+    # Ensure that the minimum Rp and Rs values are
+    # small positive numbers (i.e. not negative):
+    zRp[zRp<0.05] = 0.05
+    zRs[zRs<0.05] = 0.05
+    zTeqK = TeqK*np.ones( n )
+    zJmag = Jmag*np.ones( n )
+    zTSM = computeTSM( zRp, zMp, zRs, zTeqK, zJmag )
+
+    ixs0 = ( np.isnan(zTSM)==False )
+    if np.sum( ixs0 )<100:
+        pdb.set_trace()
+    zTSM = zTSM[ixs0]
+    n0 = len( zTSM )
+    n34 = int( 0.34*n0 )
+    dTSM = zTSM - np.median( zTSM )
+    
+    ixsL = ( dTSM<0 )
+    dTSML = np.abs( dTSM[ixsL] )
+    sigLowTSM = dTSML[np.argsort(dTSML)][n34]
+    
+    ixsU = ( dTSM>=0 )
+    dTSMU = np.abs( dTSM[ixsU] )
+    sigUppTSM = dTSMU[np.argsort(dTSMU)][n34]
+    
+    #sigLowTSM = TSM - zTSM.min()
+    #sigUppTSM = zTSM.max() - TSM    
+    sigTSM = [ sigLowTSM, sigUppTSM ]
+    
+    return sigTSM
+
+
+def estimateUncertaintyESM( plDict, ixs, k ):
+    """
+    Monte Carlo estimates for ESM uncertainties.
+    
+    Samples Gaussian distributions for Rp and Rs.
+    Holds Teq, Tstar, and Kmag fixed.
+    """
+    
+    RsRS = plDict['RsRS'][ixs][k]
+    sigRsRS = plDict['RsUncRS'][ixs][k]
+    if np.isnan( sigRsRS ):
+        sigRsRS = 0.2*RsRS # arbitrarily set to 20% of radius value 
+    RpRE = plDict['RpValRE'][ixs][k]
+    sigRpRE = plDict['RpUncRE'][ixs][k]
+    Kmag = plDict['Kmag'][ixs][k]
+    TeqK = plDict['TeqK'][ixs][k]
+    TstarK = plDict['TstarK'][ixs][k]
+    ESM = plDict['SM'][ixs][k]
+
+    n = 3000
+    zRp = RpRE + sigRpRE*np.random.randn( n )
+    zRs = RsRS + sigRsRS*np.random.randn( n )
+    # Ensure that the minimum Rp and Rs values are
+    # small positive numbers (i.e. not negative):
+    zRp[zRp<0.05] = 0.05
+    zRs[zRs<0.05] = 0.05
+    zTeqK = TeqK*np.ones( n )
+    zTstarK = TstarK*np.ones( n )
+    zKmag = Kmag*np.ones( n )
+    zRpRs = ( zRp*REARTH_SI )/( zRs*RSUN_SI )
+    zESM = computeESM( zTeqK, zRpRs, zTstarK, zKmag )
+
+    ixs0 = ( np.isnan(zESM)==False )
+    if np.sum( ixs0 )<100:
+        pdb.set_trace()
+    zESM = zESM[ixs0]
+    n0 = len( zESM )
+    n34 = int( 0.34*n0 )
+    dESM = zESM - np.median( zESM )
+    
+    ixsL = ( dESM<0 )
+    dESML = np.abs( dESM[ixsL] )
+    sigLowESM = dESML[np.argsort(dESML)][n34]
+    
+    ixsU = ( dESM>=0 )
+    dESMU = np.abs( dESM[ixsU] )
+    sigUppESM = dESMU[np.argsort(dESMU)][n34]
+    
+    sigESM = [ sigLowESM, sigUppESM ]
+    
+    return sigESM
+
+
+
+def applyPreCutsConfirmed( z, preCutsFunc, obsSample, limitsRA_hr, limitsDec_deg ):
+    """
+    Note that limitsRA_hr and limitsDec_deg haven't been used for Confirmed yet, 
+    but could be, and are currently implemented for TOIs.
+    """
+    
+    ixs, cutStr, titleStr = preCutsFunc( z, obsSample )
+    RADecStr = '' # not yet implemented for Confirmed (?), only TOIs...
+    print( '{0:.0f} planets have mass measurements or estimates'.format( len( ixs ) ) )
+    print( 'and orbit stars with radii 0.05-10 R_Sun' )
+    # Apply cuts to all dictionary arrays:
+    for k in list( z.keys() ):
+        z[k] = z[k][ixs]
+    return z, cutStr, titleStr, RADecStr
+
 
 def photBands( makePlot=False ):
     idir = os.path.dirname( __file__ )
@@ -542,6 +862,7 @@ def processRARestriction( RAMin_hr, RAMax_hr ):
         RAMax_hr = 1e9
         RAStr = 'No RA restrictions applied'
     return RAStr, RAMin_hr, RAMax_hr
+
 
 def processDecRestriction( DecMin_deg, DecMax_deg ):
     if ( DecMin_deg is not None )*( DecMax_deg is not None ):

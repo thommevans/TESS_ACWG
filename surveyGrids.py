@@ -84,11 +84,11 @@ def Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag='TSM', HeatMap
     showNeptuneRadius = False
     showJupiterRadius = False
     addSignature = False
-    figPaths = transmissionGridConfirmed( ipath=ipath, wideFormat=wideFormat, \
-                                          showNeptuneRadius=showNeptuneRadius, \
-                                          showJupiterRadius=showJupiterRadius, \
-                                          survey=survey, addSignature=addSignature, \
-                                          SMFlag=SMFlag, HeatMap=HeatMap )
+    figPaths = gridConfirmed( ipath=ipath, wideFormat=wideFormat, \
+                              showNeptuneRadius=showNeptuneRadius, \
+                              showJupiterRadius=showJupiterRadius, \
+                              survey=survey, addSignature=addSignature, \
+                              SMFlag=SMFlag, HeatMap=HeatMap )
     for f in figPaths: # PDFs and PNGs
         for k in list( f.keys() ):
             fnew = f[k].replace( 'Confirmed_', 'Confirmed_{0}_'\
@@ -125,12 +125,12 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag='TSM', \
                 r = 'RAall'
             else:
                 r = 'RA{0:.0f}-{1:.0f}h'.format( RA[0], RA[1] )
-            figPaths = transmissionGridTOIs( ipath=ipath, wideFormat=wideFormat, \
-                                             addSignature=addSignature, survey=survey, \
-                                             RAMin_hr=RA[0], RAMax_hr=RA[1], \
-                                             DecMin_deg=i[1], DecMax_deg=i[2],
-                                             SMFlag=SMFlag, onlyPCs=onlyPCs, \
-                                             HeatMap=HeatMap )
+            figPaths = gridTOIs( ipath=ipath, wideFormat=wideFormat, \
+                                 addSignature=addSignature, survey=survey, \
+                                 RAMin_hr=RA[0], RAMax_hr=RA[1], \
+                                 DecMin_deg=i[1], DecMax_deg=i[2],
+                                 SMFlag=SMFlag, onlyPCs=onlyPCs, \
+                                 HeatMap=HeatMap )
             opaths[i[0]][r] = []
             for f in figPaths: # PDFs and PNGs
                 for k in list( f.keys() ):
@@ -148,15 +148,140 @@ def TOIs( ipath='toiProperties.pkl', survey={}, RARanges='all', SMFlag='TSM', \
     return opaths
 
 
+def BestInClass( ipaths={ 'Confirmed':'', 'TOIs':'' }, survey={}, \
+                 SMFlag='TSM', HeatMap=False ):
+    """
+    ipaths['Confirmed'] should probably be the version with missing masses added.
+    """
+    # Only option for now is for no RA/Dec limits for best-in-class:
+    RAMin_hr = RAMax_hr = DecMin_deg = DecMax_deg = None
+    wideFormat = True
+    addSignature = False
+    figPaths = gridBestInClass( ipaths=ipaths, wideFormat=wideFormat, \
+                                survey=survey, addSignature=addSignature, \
+                                SMFlag=SMFlag, HeatMap=HeatMap, \
+                                RAMin_hr=RAMin_hr,  RAMax_hr=RAMax_hr, \
+                                DecMin_deg=DecMin_deg,  DecMax_deg=DecMax_deg )
+    for f in figPaths: # PDFs and PNGs
+        for k in list( f.keys() ):
+            fnew = f[k].replace( 'BestInClass_', 'BestInClass_{0}_'\
+                                 .format( survey['obsSample'] ) )
+            if os.path.isfile( fnew ):
+                os.remove( fnew )
+            os.rename( f[k], fnew )
+            plt.close( 'all' )
+    return None
+
+
 #############################################################################
 # Transmission/Emission spectroscopy survey:
 
 
-def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
-                          addSignature=False, survey={}, \
-                          RAMin_hr=None, RAMax_hr=None, \
-                          DecMin_deg=None, DecMax_deg=None, \
-                          SMFlag='TSM', onlyPCs=False, ASCII=False, HeatMap=False ):
+def gridBestInClass( ipaths={ 'Confirmed':'', 'TOIs':''}, \
+                     wideFormat=True, addSignature=False, survey={}, \
+                     RAMin_hr=None, RAMax_hr=None, \
+                     DecMin_deg=None, DecMax_deg=None, \
+                     SMFlag='TSM', onlyPCs=True, ASCII=False, HeatMap=False ):
+    """
+    Top 5 in each cell are 'Best in class' drawn from Confirmed and TOIs.
+    """
+    showGrid = True
+    zT, dateStr = readTOIProperties( ipath=ipaths['TOIs'], SMFlag=SMFlag )
+    zC, dateStr = readConfirmedProperties( ipath=ipaths['Confirmed'], SMFlag=SMFlag )
+    ostr = 'BestInClass'
+    #if onlyPCs == True:
+    #    ostr = 'TOIs_onlyPCs'
+
+    preCutsC = survey['preCuts']['Confirmed']
+    preCutsT = survey['preCuts']['TOIs']
+    obsSample = survey['obsSample']
+
+    # temporary hack:
+    if np.any( [ RAMin_hr, RAMax_hr, DecMin_deg, DecMax_deg ] ) is not None:
+        print( 'For best-in-class, RA/Dec limits not yet implemented' )
+        print( '... need to sort out consistently for Confirmed and TOIs first (TODO).' )
+        pdb.set_trace() 
+    limitsRA_hr = [ RAMin_hr, RAMax_hr ]
+    limitsDec_deg = [ DecMin_deg, DecMax_deg ]
+    zT, cutStrT, titleStrT, RADecStrT = Utils.applyPreCutsTOIs( zT, preCutsT, obsSample, \
+                                                                limitsRA_hr, \
+                                                                limitsDec_deg, \
+                                                                onlyPCs=True )
+    zC, cutStrC, titleStrC, RADecStrC = Utils.applyPreCutsConfirmed( zC, preCutsC, \
+                                                                     obsSample, \
+                                                                     limitsRA_hr, \
+                                                                     limitsDec_deg )
+    # Combine the Confirmed and TOI samples:
+    z = Utils.combineConfirmedAndTOIs( zC, zT )
+    
+    titleStr = 'Best-in-class sample'
+    RADecStr = ''
+    onames = {}
+
+    # Radius-temperature grid plot listing the top-ranked planets in each cell:
+    if ASCII:
+        plList = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, \
+                                dateStr=dateStr, survey=survey, \
+                                RADecStr=RADecStr, ASCII=ASCII, \
+                                HeatMap=HeatMap, \
+                                TOIGrid=False, bestInClass=True )
+        return plList
+    fig2, ax2 = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, \
+                               dateStr=dateStr, \
+                               survey=survey, RADecStr=RADecStr, \
+                               HeatMap=HeatMap, \
+                               TOIGrid=False, bestInClass=True )
+    onames['2'] = '{0}_gridTop{1}s.pdf'.format( ostr, SMFlag )
+
+    #toiNote = 'TOIs with "PC" TFOPWG Disposition shown in darker font\n'
+    #if onlyPCs == True:
+    #    toiNote = 'Only TOIs with "PC" TFOPWG Disposition are displayed\n'
+    #toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
+    if SMFlag=='TSM':
+        toiNote = 'For TSM calculations, empirical relation adapted from Chen & Kipping (2017) assumed for masses.'
+        fig2.text( 0.08, 0.91-0.10, toiNote, \
+                c='black', fontsize=14, horizontalalignment='left', \
+                verticalalignment='bottom' )
+
+    if addSignature==True:
+        for ax in [ax2]:
+            addSignatureToAxis( ax )
+
+    figs = { '2':fig2 }
+
+    if wideFormat==True:
+        odirExt = 'survey{0}/wideFormat/BestInClass'.format( survey['surveyName'] )
+    else:
+        odirExt = 'survey{0}/narrowFormat/BestInClass'.format( survey['surveyName'] )
+    odir = os.path.join( FIGDIR, odirExt )
+    if os.path.isdir( odir )==False:
+        os.makedirs( odir )
+    opathsPDF = {}
+    opathsPNG = {}
+    sourceStr = 'Source: NASA Exoplanet Archive ({0})'.format( dateStr )
+    for k in ['2']:
+        figs[k].text( 0.97, 0.01, sourceStr, fontsize=10, \
+                      horizontalalignment='right', verticalalignment='bottom' )
+        if addSignature==True:
+            onames[k] = onames[k].replace( '.pdf', '_wSignature.pdf' )
+        
+        opathk = os.path.join( odir, onames[k] )
+        figs[k].savefig( opathk )
+        opathk_png = opathk.replace( '.pdf', '.png' )
+        figs[k].savefig( opathk_png )
+        opathsPDF[k] = opathk
+        opathsPNG[k] = opathk_png
+        print( '{0}\n{1}'.format( opathk, opathk_png ) )
+        print( 'RADecStr = {0}'.format( RADecStr ) )
+    
+    return opathsPDF, opathsPNG
+
+
+def gridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
+              addSignature=False, survey={}, \
+              RAMin_hr=None, RAMax_hr=None, \
+              DecMin_deg=None, DecMax_deg=None, \
+              SMFlag='TSM', onlyPCs=False, ASCII=False, HeatMap=False ):
     """
     TOIs that have not been confirmed.
     """
@@ -165,31 +290,10 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     ostr = 'TOIs'
     if onlyPCs == True:
         ostr = 'TOIs_onlyPCs'
-
-    n0 = len( z['planetName'] )
-    ixs0, cutStr, titleStr = survey['preCuts']( z )
-    # Exclude targets outside the RA limits:
-    RAStr, RAMin_hr, RAMax_hr = Utils.processRARestriction( RAMin_hr, RAMax_hr )
-    ixsRA = ( z['RA_hr'][ixs0]>=RAMin_hr )*( z['RA_hr'][ixs0]<=RAMax_hr )
-    # Exclude targets outside the Dec limits:
-    DecStr, DecMin_deg, DecMax_deg = Utils.processDecRestriction( DecMin_deg, DecMax_deg )
-    ixsDec = ( z['Dec_deg'][ixs0]>=DecMin_deg )*( z['Dec_deg'][ixs0]<=DecMax_deg )
-    RADecStr = '{0}\n{1}\nNo bright limits have been applied\n'.format( RAStr, DecStr )
-    # Exclude targets with large radius uncertainties:
-    RpUncMax = 0.25*z['RpValRE'] # Rp uncertainties <25% of radius value
-    RpUncMax[RpUncMax<1] = 1 # except if that's <1RE, then set to 1RE
-    ixsRp = ( z['RpUncRE']<RpUncMax ) # only keep those with Rp uncertainties in this range
-    print( '\nDiscarding {0:.0f} (out of {1:.0f}) TOIs due to large ExoFOP radius uncertainties\n'\
-           .format( len( ixsRp )-ixsRp.sum(), len( ixsRp ) ) )
-    if onlyPCs == True:
-        ixsPCs = ( [i[-4:]=='(PC)' for i in z['planetName'][ixs0]] )
-        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsRp*ixsPCs]
-    else:
-        ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsRp]
-    # Apply cuts to all dictionary arrays:
-    for k in list( z.keys() ):
-        z[k] = z[k][ixs]
-    
+    limitsRA_hr = [ RAMin_hr, RAMax_hr ]
+    limitsDec_deg = [ DecMin_deg, DecMax_deg ]
+    z = Utils.applyPreCutsTOIs( z, survey['preCuts'], survey['obsSample'], \
+                                limitsRA_hr, limitsDec_deg, onlyPCs=onlyPCs )
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
@@ -250,7 +354,7 @@ def transmissionGridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
     return opathsPDF, opathsPNG
     
     
-def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=False, SMFlag = 'TSM' ):
+def gridTESS( publishedMasses=True, wideFormat=True, addSignature=False, SMFlag = 'TSM' ):
     """
     Confirmed TESS planets without published mass.
     Currently unused, may be out of date
@@ -313,45 +417,27 @@ def transmissionGridTESS( publishedMasses=True, wideFormat=True, addSignature=Fa
         print( opath )
 
     return None
+
     
-    
-def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True, \
-                               survey={}, addSignature=False, showGrid=True, \
-                               showNeptuneRadius=False, showJupiterRadius=False, \
-                               SMFlag='TSM', HeatMap=False, ASCII=False ):
+def gridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True, \
+                   survey={}, addSignature=False, showGrid=True, \
+                   showNeptuneRadius=False, showJupiterRadius=False, \
+                   SMFlag='TSM', HeatMap=False, ASCII=False ):
     """
     
     """
-    z, dateStr = readConfirmedProperties( ipath=ipath, SMFlag = SMFlag )
+    z, dateStr = readConfirmedProperties( ipath=ipath, SMFlag=SMFlag )
     ostr = 'Confirmed'
 
     # Not applying Dec restrictions to Confirmed planets for now:
     #DecStr, DecMin_deg, DecMax_deg = processDecRestriction( None, None )
     RADecStr = ''
     
-    ixs, cutStr, titleStr = survey['preCuts']( z, survey['obsSample'] )
-    
-    print( '{0:.0f} planets have mass measurements or estimates'.format( len( ixs ) ) )
-    print( 'and orbit stars with radii 0.05-10 R_Sun' )
-    # Apply cuts to all dictionary arrays:
-    for k in list( z.keys() ):
-        z[k] = z[k][ixs]
-           
-    #pl = z['planetName']#[ixs]
-    #RA = z['RA']#[ixs]
-    #Dec = z['Dec']#[ixs]
-    #RA_deg = z['RA_deg']#[ixs]
-    #Dec_deg = z['Dec_deg']#[ixs]
-    #SM = z['SM']#[ixs]
-    #Teq = z['TeqK']#[ixs]
-    #Ts = z['TstarK']#[ixs]
-    #MpVal = z['MpValME']#[ixs]
-    #MpLsig = z['MpLsigME']#[ixs]
-    #MpUsig = z['MpUsigME']#[ixs]
-    #RpVal = z['RpValRE']#[ixs]
-    #RpLsig = z['RpLsigRE']#[ixs]
-    #RpUsig = z['RpUsigRE']#[ixs]
-    #TESS = np.array( z['TESS'][ixs], dtype=int ) <-- this has been moved within the plotTeqRpGrid() routine
+    limitsRA_hr = [ None, None ] # not implemented currently
+    limitsDec_deg = [ None, None ] # not implemented currently
+    z, cutStr, titleStr = Utils.applyPreCutsConfirmed( z, survey['preCuts'], \
+                                                       survey['obsSample'], \
+                                                       limitsRA_hr, limitsDec_deg )    
     onames = {}
     
     # Radius-temperature plot for all planets with well-measured mass:
@@ -420,7 +506,7 @@ def transmissionGridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True,
     print( '\nSaved:' )
     if wideFormat==True:
         odirExt = 'survey{0}/wideFormat/Confirmed/{1}'.format( survey['surveyName'], \
-                                                              SMFlag )
+                                                               SMFlag )
     else:
         odirExt = 'survey{0}/narrowFormat/Confirmed/{1}'.format( survey['surveyName'], \
                                                             SMFlag )
@@ -682,9 +768,9 @@ def plotTeqRpTESS( ax, showSolarSystem=True, showNeptuneRadius=True, \
     for i in range( n ):
         c = Utils.getStarColor( Ts[i] )
         if SMFlag == 'TSM':
-            thresholdSM = surveySetup.thresholdTSM( RpVal[i], framework='ACWG' )
+            thresholdSM = surveySetup.thresholdTSM( RpVal[i], Teq[i], framework='ACWG' )
         elif SMFlag == 'ESM':
-            thresholdSM = surveySetup.thresholdESM(RpVal[i], framework='ACWG')
+            thresholdSM = surveySetup.thresholdESM(RpVal[i], Teq[i], framework='ACWG')
         if applySMcuts==False: # plotting everything regardless of TSM
             ax.plot( [Teq[i]], [RpVal[i]], 'o', ms=ms, alpha=alpha, \
                      mfc=c, mec=c, zorder=z0+i )
@@ -727,8 +813,9 @@ def addSignatureToAxis( ax ):
     return None
 
 
-def plotTeqRpGrid( plDict, SMFlag, plTESS=None, cgrid=None, titleStr='', \
-                   RADecStr='', dateStr='', wideFormat=True, survey={}, TOIGrid=False, \
+def plotTeqRpGrid( plDict, SMFlag, cgrid=None, titleStr='', \
+                   RADecStr='', dateStr='', wideFormat=True, survey={}, \
+                   TOIGrid=False, bestInClass=False, \
                    ASCII=False, HeatMap=True, extraNotes=None ):
     """
     Plots grid of planets and TOIs by TeqK and RpRE
@@ -737,7 +824,16 @@ def plotTeqRpGrid( plDict, SMFlag, plTESS=None, cgrid=None, titleStr='', \
     """
 
     pl = plDict['planetName']
-    if TOIGrid==False:
+    if bestInClass==True:
+        # 0's for confirmed planets *not* discovered by TESS, plus TOIs
+        # 1's only for *confirmed* planets discovered by TESS
+        ixsTESS = ( plDict['confirmedTESS']==1 )
+        plTESS = list( plDict['planetName'][ixsTESS] )
+        for i in range(len(plTESS)):
+            plTESS[i] = plTESS[i].replace(' ', '')
+    elif TOIGrid==False:
+        # If it's not the TOIs, then identify those that were discovered
+        # by TESS for highlighting in bold on the plots:
         TESS = np.array( plDict['TESS'], dtype=int )
         plTESS = pl[TESS>0]
         plTESS = list(plTESS)
@@ -745,7 +841,7 @@ def plotTeqRpGrid( plDict, SMFlag, plTESS=None, cgrid=None, titleStr='', \
             plTESS[i] = plTESS[i].replace(' ', '')
     else:
         plTESS = None
-        
+
     if cgrid is None:
         cgrid = np.array( [ 201, 148, 199 ] )/256.
         
@@ -767,11 +863,13 @@ def plotTeqRpGrid( plDict, SMFlag, plTESS=None, cgrid=None, titleStr='', \
     yLines = np.arange( 0.5, nR+0.5 )
     
     if ASCII:
-        plList = addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, \
-                            xLines, yLines, survey=survey, TOIGrid=TOIGrid, ASCII=True )
+        plList = addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
+                            TOIGrid=TOIGrid, bestInClass=bestInClass, \
+                            survey=survey, ASCII=True )
         return plList, dateStr
-    ax, SMstr = addTopSMs(  ax, plDict, SMFlag, Tgrid, Rgrid, \
-                            xLines, yLines, plTESS=plTESS, TOIGrid=TOIGrid, survey=survey )
+    ax, SMstr = addTopSMs(  ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
+                            TOIGrid=TOIGrid, bestInClass=bestInClass, \
+                            plTESS=plTESS, survey=survey )
     for i in range( nT ):
         ax.plot( [xLines[i],xLines[i]], [yLines.min(),yLines.max()], '-', \
                  c=cgrid, zorder=1 )
@@ -817,20 +915,25 @@ def plotTeqRpGrid( plDict, SMFlag, plTESS=None, cgrid=None, titleStr='', \
     fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
               horizontalalignment='left', verticalalignment='bottom' )
    
-    otherNotes = '{0} values are listed in square brackets. NOTE: Quoted $1\\sigma$ uncertainties'.format( SMFlag )
-    otherNotes += ' are approximate\nand only account for the uncertainty in the stellar and planetary radii.'
+    otherNotes = '{0} values are listed in square brackets.'.format( SMFlag )
+    if bestInClass==False: # bestInClass don't print TSM/ESM uncertainties
+        otherNotes += ' NOTE: Quoted $1\\sigma$ uncertainties'
+        otherNotes += ' are approximate\nand only account for the uncertainty in the stellar and planetary radii.'
     otherNotes += '\nAsterisks indicate potential top-5 in box, based on Barclay et al. (2018) predicted yield.'                  
     if extraNotes is not None:
         otherNotes += '\n{0}'.format( extraNotes )
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
-   
+    if bestInClass==True:
+        Utils.legendBestInClass( fig )
     dx = 0.02*( xLines.max()-xLines.min() )
     dy = 0.03*( yLines.max()-yLines.min() )
     ax.set_xlim( [ xLines.min()-dx, xLines.max()+dx ] )
     ax.set_ylim( [ yLines.min()-dy, yLines.max()+dy ] )
 
     return fig, ax
+
+
 
 
 def formatAxisTicks( ax ):
@@ -849,7 +952,8 @@ def formatAxisTicks( ax ):
     ax.yaxis.set_tick_params( length=tlm, width=tw, which='minor' )
     return ax
 
-def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
+
+def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, bestInClass=False, \
                TOIGrid=False, plTESS=None, survey={}, ASCII=False ):
 
     """
@@ -871,6 +975,10 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
     TstarK = plDict['TstarK']
     RpRE = plDict['RpValRE']
     SMVals = plDict['SM']
+    if bestInClass==True:
+        sMass = plDict['statusMass']
+    else:
+        sMass = None
                
     plNames = []    
     framework = survey['framework']
@@ -885,22 +993,22 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
         text_fs = 16
         #ndx = 20
     nList = 5 
-    ms = 8
     for i in range( nx ): # loop over temperature columns
         ixsi = ( TeqK>=Tgrid[i] )*( TeqK<Tgrid[i+1] ) # Show if within the temperature range
         xsymb = xLines[i] + 0.06*( xLines[i+1]-xLines[i] )
         dx = ( xLines[i+1]-xLines[i] )
         xtxt = xLines[i] + 0.12*dx
 
+        TeqKi = 0.5*( Tgrid[i]+Tgrid[i+1] )
         for j in range( ny ): # loop over radius rows
             # Indices inside box above the TSM threshold:
             RpREj = 0.5*( Rgrid[j]+Rgrid[j+1] )
 
             #Find the threshold SM for the cell
             if SMFlag == 'TSM':
-                SMj, SMstr = survey['thresholdTSM']( RpREj, framework=framework )
+                SMj, SMstr = survey['thresholdTSM']( RpREj, TeqKi, framework=framework )
             elif SMFlag == 'ESM':
-                SMj, SMstr = survey['thresholdESM']( RpREj, framework=framework )
+                SMj, SMstr = survey['thresholdESM']( RpREj, TeqKi, framework=framework )
 
             ixsj = ( RpRE>=Rgrid[j] )*( RpRE<Rgrid[j+1] ) # Show if within the radius range
             # Show if in the cell and SM higher than threshold:
@@ -917,175 +1025,18 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
 
                 predSM = getFifthPredicted( SMFlag, Rgrid[j+1], Rgrid[j], \
                                             Tgrid[i+1], Tgrid[i] )
-                    
-                for k in range( nwrite ): #For each planet (max 5)
-                    ytxt = y0-k*dy
-                    plStr = pl[ixs][k].replace( ' ', '' )
-                    if TOIGrid==True:
-                        t1 = time.time()
-                        if SMFlag=='TSM':
-                            SMUnc = estimateUncertaintyTSM( plDict, ixs, k )
-                        elif SMFlag=='ESM':
-                            SMUnc = estimateUncertaintyESM( plDict, ixs, k )
-                        plStr = '{0}'.format( plStr )
-                        SMStr = '[{0:.0f}(-{1:.0f},+{2:.0f})]'.format( SMVals[ixs][k], SMUnc[0], SMUnc[1] )
-                        t2 = time.time()
-                    else:
-                        SMStr = '[{0:.0f}]'.format( SMVals[ixs][k] )
-                    if SMVals[ixs][k] >= predSM:
-                        plStr += '*'
-                    plNames.append( plStr )
-                    if not ASCII:
-
-                        # If this is a TOI grid plot, remove the
-                        # redundant prefix and suffix:
-                        if TOIGrid==True:
-                            plStr = plStr.replace( 'TOI-', '' )
-                            ix1 = plStr.find( '(' )
-                            ix2 = plStr.find( ')' )
-                            plStr = plStr[:ix1] + plStr[ix2+1:]
-                        
-                        # Silver if APC or CP
-                        if ( plStr.find( '(APC' )>0 )+( plStr.find( '(CP)' )>0 ): 
-                            c = 'Silver'
-                            wt = 'normal'
-                        else: # Black if PC
-                            c = 'Black'
-                            wt = 'normal'
-                        if plTESS != None:
-                            if plStr.split(' ')[0] in plTESS:
-                                wt = 'bold'
-                        if TOIGrid==True:
-                            wt = 'normal'
-                        nStr = len( plStr )
-                        fullStr = '{0} {1}'.format( plStr, SMStr )
-                        ax.text( xtxt, ytxt, fullStr, fontsize=text_fs, weight=wt, color=c, \
-                                 horizontalalignment='left', verticalalignment='center' )
-                        # NOT SURE WHY I WAS TRYING TO PRINT SMSTR SEPARATELY BEFORE...
-                        # MAYBE THERE WAS A REASON?
-                        #ax.text( xtxt, ytxt, plStr, fontsize=text_fs, weight=wt, color=c, \
-                        #         horizontalalignment='left', verticalalignment='center' )
-                        # Print the TSM/ESM string after the planet name.
-                        # nStr is to move across the plStr, the +1 is to add a space,
-                        # the dx/30 is roughly the amount of a single character/space,
-                        # i.e. about 30 characters per grid square.
-                        #xtxtSM = xtxt + ( nStr+1 )*( dx/ndx )
-                        #ax.text( xtxtSM, ytxt, SMStr, fontsize=text_fs, weight='normal', color=c, \
-                        #         horizontalalignment='left', verticalalignment='center' )
-                        ck = Utils.getStarColor( TstarK[ixs][k] )
-                        ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
+                ixs = ixs[:nwrite] # TESTING 2022-07-28, I think this should work fine...
+                #2022-07-28: 
+                #This is a VERY hacked up routine with a stupid-long argument list, created to handle the
+                #BestInClass plots, because it does an additional sorting operation within each grid cell
+                #according to the mass status of the planet. In the future, this should be cleaned up...
+                plNames = Utils.writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, plTESS, TstarK, TOIGrid, SMFlag, \
+                                                 plDict, SMVals, predSM, ASCII, bestInClass, sMass, xtxt, text_fs, xsymb )
     if ASCII:
         return plNames
     else:
         return ax, SMstr
-
-
-def estimateUncertaintyTSM( plDict, ixs, k ):
-    """
-    Monte Carlo estimates for TSM uncertainties.
     
-    Samples Gaussian distributions for Rp and Rs.
-    Holds Teq, Mp, and Jmag fixed.
-    """
-    RsRS = plDict['RsRS'][ixs][k]
-    sigRsRS = plDict['RsUncRS'][ixs][k]
-    if np.isnan( sigRsRS ):
-        sigRsRS = 0.2*RsRS # arbitrarily set to 20% of radius value SMTP Error (220): Authentification failed
-    RpRE = plDict['RpValRE'][ixs][k]
-    sigRpRE = plDict['RpUncRE'][ixs][k]
-    MpME = plDict['MpValME'][ixs][k]
-    Jmag = plDict['Jmag'][ixs][k]
-    TeqK = plDict['TeqK'][ixs][k]
-    TstarK = plDict['TstarK'][ixs][k]
-    aRs = plDict['aRs'][ixs][k]
-    TSM = plDict['SM'][ixs][k]
-
-    n = 3000
-    zMp = MpME*np.ones( n ) #0.5*MpME + MpME*np.random.random( n )
-    zRp = RpRE + sigRpRE*np.random.randn( n )
-    zRs = RsRS + sigRsRS*np.random.randn( n )
-    # Ensure that the minimum Rp and Rs values are
-    # small positive numbers (i.e. not negative):
-    zRp[zRp<0.05] = 0.05
-    zRs[zRs<0.05] = 0.05
-    zTeqK = TeqK*np.ones( n )
-    zJmag = Jmag*np.ones( n )
-    zTSM = Utils.computeTSM( zRp, zMp, zRs, zTeqK, zJmag )
-
-    ixs0 = ( np.isnan(zTSM)==False )
-    if np.sum( ixs0 )<100:
-        pdb.set_trace()
-    zTSM = zTSM[ixs0]
-    n0 = len( zTSM )
-    n34 = int( 0.34*n0 )
-    dTSM = zTSM - np.median( zTSM )
-    
-    ixsL = ( dTSM<0 )
-    dTSML = np.abs( dTSM[ixsL] )
-    sigLowTSM = dTSML[np.argsort(dTSML)][n34]
-    
-    ixsU = ( dTSM>=0 )
-    dTSMU = np.abs( dTSM[ixsU] )
-    sigUppTSM = dTSMU[np.argsort(dTSMU)][n34]
-    
-    #sigLowTSM = TSM - zTSM.min()
-    #sigUppTSM = zTSM.max() - TSM    
-    sigTSM = [ sigLowTSM, sigUppTSM ]
-    
-    return sigTSM
-
-
-def estimateUncertaintyESM( plDict, ixs, k ):
-    """
-    Monte Carlo estimates for ESM uncertainties.
-    
-    Samples Gaussian distributions for Rp and Rs.
-    Holds Teq, Tstar, and Kmag fixed.
-    """
-    
-    RsRS = plDict['RsRS'][ixs][k]
-    sigRsRS = plDict['RsUncRS'][ixs][k]
-    if np.isnan( sigRsRS ):
-        sigRsRS = 0.2*RsRS # arbitrarily set to 20% of radius value 
-    RpRE = plDict['RpValRE'][ixs][k]
-    sigRpRE = plDict['RpUncRE'][ixs][k]
-    Kmag = plDict['Kmag'][ixs][k]
-    TeqK = plDict['TeqK'][ixs][k]
-    TstarK = plDict['TstarK'][ixs][k]
-    ESM = plDict['SM'][ixs][k]
-
-    n = 3000
-    zRp = RpRE + sigRpRE*np.random.randn( n )
-    zRs = RsRS + sigRsRS*np.random.randn( n )
-    # Ensure that the minimum Rp and Rs values are
-    # small positive numbers (i.e. not negative):
-    zRp[zRp<0.05] = 0.05
-    zRs[zRs<0.05] = 0.05
-    zTeqK = TeqK*np.ones( n )
-    zTstarK = TstarK*np.ones( n )
-    zKmag = Kmag*np.ones( n )
-    zRpRs = ( zRp*Utils.REARTH_SI )/( zRs*Utils.RSUN_SI )
-    zESM = Utils.computeESM( zTeqK, zRpRs, zTstarK, zKmag )
-
-    ixs0 = ( np.isnan(zESM)==False )
-    if np.sum( ixs0 )<100:
-        pdb.set_trace()
-    zESM = zESM[ixs0]
-    n0 = len( zESM )
-    n34 = int( 0.34*n0 )
-    dESM = zESM - np.median( zESM )
-    
-    ixsL = ( dESM<0 )
-    dESML = np.abs( dESM[ixsL] )
-    sigLowESM = dESML[np.argsort(dESML)][n34]
-    
-    ixsU = ( dESM>=0 )
-    dESMU = np.abs( dESM[ixsU] )
-    sigUppESM = dESMU[np.argsort(dESMU)][n34]
-    
-    sigESM = [ sigLowESM, sigUppESM ]
-    
-    return sigESM
 
 def generateAxisScatter( xlim=[0,3100], ylim=[0,26], wideFormat=False, \
                          whichType='RpTeq', titleStr='', DecStr='', \
@@ -1330,9 +1281,9 @@ def plotTeqRpScatter( plDict, SMFlag, ms=8, alpha=1, \
             c = c0
         
         if SMFlag == 'TSM':
-            SMi, SMstr = survey['thresholdTSM']( RpVal[i], framework=framework )
+            SMi, SMstr = survey['thresholdTSM']( RpVal[i], Teq[i], framework=framework )
         elif SMFlag == 'ESM':
-            SMi, SMstr = survey['thresholdESM']( RpVal[i], framework=framework )
+            SMi, SMstr = survey['thresholdESM']( RpVal[i], Teq[i], framework=framework )
 
         if applySMcuts==False: # plotting everything regardless of SM
             if ( indicateTESS==True )*( TESS[i]==1 ):
@@ -1787,8 +1738,8 @@ def SMRepeats( SMFlag = 'ESM', survey = {} ):
     ESM = data['ESM']
     TSM = data['TSM']
     
-    topRanked = transmissionGridTOIs( survey=survey, SMFlag=SMFlag,\
-                                       ASCII=True )
+    topRanked = gridTOIs( survey=survey, SMFlag=SMFlag,\
+                          ASCII=True )
     for i, j in enumerate( topRanked ):
         ix = j.find(' ')
         topRanked[i] = j[:ix]
@@ -1815,6 +1766,7 @@ def SMRepeats( SMFlag = 'ESM', survey = {} ):
             for l in value:
                 if l[2] > 0:
                     name = None
+                    pdb.set_trace() # how to pass Teq into threhold function here?
                     if SMFlag == 'ESM':
                         if l[1] > surveySetup.thresholdESM(l[2])[0]:
                             name = l[0]
@@ -1865,8 +1817,8 @@ def CreateASCII_TOIs( ipath='toiProperties.pkl', survey={}, SMFlag = 'TSM', only
              'TstarK', 'loggstarCGS', 'RsRS', 'MsMS', \
              'MpValME', 'RpValRE', 'TeqK' ]
   
-    topRanked, dateStr = transmissionGridTOIs( ipath=ipath, survey=survey, SMFlag=SMFlag, \
-                                               onlyPCs=onlyPCs, ASCII=True )
+    topRanked, dateStr = gridTOIs( ipath=ipath, survey=survey, SMFlag=SMFlag, \
+                                   onlyPCs=onlyPCs, ASCII=True )
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
@@ -2050,7 +2002,7 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
               SMFlag, 'Kamp', 'Pday', 'TstarK', 'RsRS', 'MsMS', \
               'MpValME', 'MpLowErrME', 'MpUppErrME', 'RpValRE', 'TeqK' ]
   
-    topRanked, dateStr = transmissionGridConfirmed( ipath=ipath, survey=survey, SMFlag=SMFlag, ASCII=True )
+    topRanked, dateStr = gridConfirmed( ipath=ipath, survey=survey, SMFlag=SMFlag, ASCII=True )
     nAll = len( z['planetName'] )
     ixsAll = np.arange( nAll )
     nTop = len( topRanked )
@@ -2060,7 +2012,7 @@ def CreateASCII_Confirmed( ipath='confirmedProperties.pkl', survey={}, SMFlag = 
 
     # Identify the indices of the top-ranked targets in each cell and add asterisks to
     # planet names in the array if they have been flagged as such by the addTopSMs() 
-    # routine via the transmissionGridConfirmed() call above:
+    # routine via the gridConfirmed() call above:
     topRankedIxs = np.zeros( nTop, dtype=int )
     for i in range( nTop ):
         if topRanked[i][-1]=='*':
