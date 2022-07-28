@@ -1,6 +1,7 @@
 import pdb, sys, os, time
 import csv
 import numpy as np
+import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import pickle
@@ -238,7 +239,7 @@ def gridBestInClass( ipaths={ 'Confirmed':'', 'TOIs':''}, \
     #    toiNote = 'Only TOIs with "PC" TFOPWG Disposition are displayed\n'
     #toiNote += 'Masses estimated from empirical relation (adapted from Chen & Kipping 2017)'
     if SMFlag=='TSM':
-        toiNote = 'For TSM calculations, empirical relation adapted from Chen & Kipping (2017) assumed for masses.'
+        toiNote = 'When measured mass not available, adapted Chen & Kipping (2017) relation is assumed for TSM.'
         fig2.text( 0.08, 0.91-0.10, toiNote, \
                 c='black', fontsize=14, horizontalalignment='left', \
                 verticalalignment='bottom' )
@@ -919,9 +920,12 @@ def plotTeqRpGrid( plDict, SMFlag, cgrid=None, titleStr='', \
     if bestInClass==False: # bestInClass don't print TSM/ESM uncertainties
         otherNotes += ' NOTE: Quoted $1\\sigma$ uncertainties'
         otherNotes += ' are approximate\nand only account for the uncertainty in the stellar and planetary radii.'
-    otherNotes += '\nAsterisks indicate potential top-5 in box, based on Barclay et al. (2018) predicted yield.'                  
+    otherNotes += '\nAsterisks indicate potential top-5 in box, based on Kunimoto et al. (2022) predicted yield for Y1-7.'
+    if bestInClass==True:
+        otherNotes += '\nFor reference, values listed on right in purple are top-5 {0} values predicted for that box.'.format( SMFlag )
     if extraNotes is not None:
-        otherNotes += '\n{0}'.format( extraNotes )
+        #otherNotes += '\n{0}'.format( extraNotes )
+        otherNotes += '{0}'.format( extraNotes )
     fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
     if bestInClass==True:
@@ -992,12 +996,14 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, bestInClass=Fal
     elif nx<=4:
         text_fs = 16
         #ndx = 20
-    nList = 5 
+    nList = 5
+    top5Predicted = Utils.medianSimulation_Kunimoto2022( survey['surveyName'], SMFlag )
     for i in range( nx ): # loop over temperature columns
         ixsi = ( TeqK>=Tgrid[i] )*( TeqK<Tgrid[i+1] ) # Show if within the temperature range
         xsymb = xLines[i] + 0.06*( xLines[i+1]-xLines[i] )
         dx = ( xLines[i+1]-xLines[i] )
         xtxt = xLines[i] + 0.12*dx
+        xtxtR = xLines[i+1] - 0.03*dx
 
         TeqKi = 0.5*( Tgrid[i]+Tgrid[i+1] )
         for j in range( ny ): # loop over radius rows
@@ -1023,15 +1029,23 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, bestInClass=Fal
                 dy = ( yLines[j+1]-yLines[j] )/float(nList+0.5)
                 y0 = yLines[j]+4.8*dy
 
-                predSM = getFifthPredicted( SMFlag, Rgrid[j+1], Rgrid[j], \
-                                            Tgrid[i+1], Tgrid[i] )
+                # Old implementation by Trey Burga using Barclay et al. (2018) predictions:
+                #predSM = getFifthPredicted( SMFlag, Rgrid[j+1], Rgrid[j], \
+                #                            Tgrid[i+1], Tgrid[i] )
+                top5ij = top5Predicted[:,j,i]
+                predSM = top5ij[-1]
+                #print( top5Predicted[:,j,i] )
+                #pdb.set_trace()
                 ixs = ixs[:nwrite] # TESTING 2022-07-28, I think this should work fine...
-                #2022-07-28: 
-                #This is a VERY hacked up routine with a stupid-long argument list, created to handle the
-                #BestInClass plots, because it does an additional sorting operation within each grid cell
-                #according to the mass status of the planet. In the future, this should be cleaned up...
-                plNames = Utils.writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, plTESS, TstarK, TOIGrid, SMFlag, \
-                                                 plDict, SMVals, predSM, ASCII, bestInClass, sMass, xtxt, text_fs, xsymb )
+                # 2022-07-28: 
+                # This is a VERY hacked up routine with a stupid-long argument list,
+                # created to handle the BestInClass plots, because it does an additional
+                # sorting operation within each grid cell according to the mass status
+                # of the planet. In the future, this should be cleaned up...
+                plNames = Utils.writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, \
+                                                 plTESS, TstarK, TOIGrid, SMFlag, plDict, \
+                                                 SMVals, top5ij, ASCII, bestInClass, \
+                                                 sMass, xtxt, xtxtR, text_fs, xsymb )
     if ASCII:
         return plNames
     else:
@@ -1655,7 +1669,17 @@ def readWithMassTESSProperties():
     return outp
 
 
-def readPredictedProperties(SMFlag = 'TSM'):
+def readPredictedProperties( SMFlag='TSM', source='Kunimoto2022' ):
+    if source=='Kunimoto2022':
+        z = readPredictedProperties_Kunimoto2022( SMFlag=SMFlag )
+    elif source=='Barclay2018':
+        z = readPredictedProperties_Barclay2018( SMFlag=SMFlag )
+    return z
+
+def readPredictedProperties_Kunimoto2022( SMFlag='TSM' ):
+    return z
+
+def readPredictedProperties_Barclay2018( SMFlag='TSM' ):
 
     """
     Processes the predicted planet information from Barclay (uses version 2)
@@ -1703,17 +1727,45 @@ def readPredictedProperties(SMFlag = 'TSM'):
     return outp
 
 
-def getFifthPredicted(SMFlag='TSM', RpMax = 0, RpMin = 0, TeqMax = 0, TeqMin = 0):
+def getFifthPredicted( SMFlag='TSM', RpMax=0, RpMin=0, TeqMax=0, TeqMin=0 ):
     
     """
-    Finds the fifth-highest ESM or TSM value for the predicted planets in a given RpRE and Teq range
+    Finds the fifth-highest ESM or TSM value for the predicted planets in a 
+    given RpRE and Teq range.
 
     Parameters:
     SMFlag- TSM or ESM (str)
     RpMax, RpMin, TeqMax, TeqMin- Define the grid cell in question (float)
     """
 
-    z = readPredictedProperties(SMFlag = SMFlag)
+    z = readPredictedProperties( SMFlag=SMFlag )
+
+    numPlanets = len(z['RsRS'])
+    ixs = [i for i in range(numPlanets) if RpMin < z['RpValRE'][i] < RpMax]
+    ixs1 = [i for i in ixs if TeqMin < z['TeqK'][i] < TeqMax]
+        
+    highestSMs = [0, 0, 0, 0, 0]
+    
+    for n in ixs1:
+        if z['SM'][n] > highestSMs[0]:
+            highestSMs.pop(0)
+            highestSMs.append(z['SM'][n])
+            highestSMs.sort()
+
+    return  highestSMs[0]
+
+def getFifthPredicted_OLD( SMFlag='TSM', RpMax=0, RpMin=0, TeqMax=0, TeqMin=0 ):
+    
+    """
+    Finds the fifth-highest ESM or TSM value for the predicted planets in a 
+    given RpRE and Teq range.
+
+    Parameters:
+    SMFlag- TSM or ESM (str)
+    RpMax, RpMin, TeqMax, TeqMin- Define the grid cell in question (float)
+    """
+
+    z = readPredictedProperties( SMFlag=SMFlag )
 
     numPlanets = len(z['RsRS'])
     ixs = [i for i in range(numPlanets) if RpMin < z['RpValRE'][i] < RpMax]
