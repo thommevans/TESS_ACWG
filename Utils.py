@@ -251,7 +251,9 @@ def writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, plTESS, TstarK, TOIGr
     TstarKs = []
     for k in range( nwrite ): #For each planet (max 5)
         plStr = pl[ixs][k].replace( ' ', '' )
-        if ( plStr=='TOI-' )*( plStr not in plTESS ):
+        if TOIGrid==True: # because all TOIs are candidates on Exoplanet Archive
+            unconfirmedTOI = True
+        elif ( plStr=='TOI-' )*( plStr not in plTESS ):
             # Because BestInClass has confirmed planets with names
             # of the form TOI-XXX, which we want to print in full,
             # and also unconfirmed TOIs, for which we only want to
@@ -331,17 +333,20 @@ def writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, plTESS, TstarK, TOIGr
                 bc = getBestInClassColor( sMassOrdered[k] )
             else:
                 bc = 'none'
-            ax.text( xtxt, ytxt, fullStr, fontsize=text_fs, \
-                     weight=wt, color=c, backgroundcolor=bc, \
-                     horizontalalignment='left', verticalalignment='center' )
             ck = getStarColor( TstarKs[k] )
-            ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
+            if ax is not None: # if ax is None, just want the plNames output
+                ax.text( xtxt, ytxt, fullStr, fontsize=text_fs, \
+                         weight=wt, color=c, backgroundcolor=bc, \
+                         horizontalalignment='left', verticalalignment='center' )
+                ax.plot( [xsymb], [ytxt], 'o', ms=ms, mec=ck, mfc=ck )
     for i in range( 5 ):
         ytxt = y0-i*dy
         SMstr = '[{0:.0f}]'.format( top5SM[i] )
-        ax.text( xtxtR, ytxt, SMstr, fontsize=text_fs, \
-                 weight=wt, color='Purple', backgroundcolor='none', \
-                 horizontalalignment='right', verticalalignment='center' )
+        if ax is not None: # if ax is None, just want the plNames output
+            if bestInClass==True:
+                ax.text( xtxtR, ytxt, SMstr, fontsize=text_fs, \
+                         weight=wt, color='Purple', backgroundcolor='none', \
+                         horizontalalignment='right', verticalalignment='center' )
         
     return plNames
 
@@ -939,7 +944,7 @@ def computeTSM( RpValRE, MpValME, RsRS, TeqK, Jmag ):
     c2 = 1.26
     c3 = 1.28
     c4 = 1.15
-    c5 = 1.0
+    c5 = 1.15 # had previously set this to 1.0
     # TSM before applying scale factor:
     Rp3 = RpValRE**3.
     MpRs2 = MpValME*( RsRS**2. )
@@ -1005,15 +1010,6 @@ def getThresholdTSM_REDUNDANT( RpRE, framework='ACWG' ):
             return 50 # 2. Everything else
 
     
-def getTSMStr_REDUNDANT( thresholdTSM ):
-    if thresholdTSM=='ACWG':
-        TSMStr = '* Kempton et al. (2018) TSM cuts applied'
-    elif thresholdTSM=='TOIs':
-        TSMStr = 'Only targets with TSM>50 (Rp>1.5RE) or TSM>10 (Rp<1.5RE) shown'
-    else:
-        TSMStr = 'Only targets with TSM>{0:.0f} shown'.format( thresholdTSM )
-    return TSMStr
-
 
 def getRARanges():
     m = 4

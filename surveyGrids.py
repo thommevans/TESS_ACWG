@@ -293,8 +293,10 @@ def gridTOIs( ipath='toiProperties.pkl', wideFormat=True, \
         ostr = 'TOIs_onlyPCs'
     limitsRA_hr = [ RAMin_hr, RAMax_hr ]
     limitsDec_deg = [ DecMin_deg, DecMax_deg ]
-    z = Utils.applyPreCutsTOIs( z, survey['preCuts'], survey['obsSample'], \
-                                limitsRA_hr, limitsDec_deg, onlyPCs=onlyPCs )
+    z, cutStr, titleStr, RADecStr = Utils.applyPreCutsTOIs( z, survey['preCuts'], \
+                                                            survey['obsSample'], \
+                                                            limitsRA_hr, limitsDec_deg, \
+                                                            onlyPCs=onlyPCs )
     onames = {}
 
     # Radius-temperature grid plot listing the top-ranked planets in each cell:
@@ -432,13 +434,14 @@ def gridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True, \
 
     # Not applying Dec restrictions to Confirmed planets for now:
     #DecStr, DecMin_deg, DecMax_deg = processDecRestriction( None, None )
-    RADecStr = ''
+    #RADecStr = ''
     
     limitsRA_hr = [ None, None ] # not implemented currently
     limitsDec_deg = [ None, None ] # not implemented currently
-    z, cutStr, titleStr = Utils.applyPreCutsConfirmed( z, survey['preCuts'], \
-                                                       survey['obsSample'], \
-                                                       limitsRA_hr, limitsDec_deg )    
+    z, cutStr, titleStr, RADecStr = Utils.applyPreCutsConfirmed( z, survey['preCuts'], \
+                                                                 survey['obsSample'], \
+                                                                 limitsRA_hr, \
+                                                                 limitsDec_deg )    
     onames = {}
     
     # Radius-temperature plot for all planets with well-measured mass:
@@ -466,7 +469,7 @@ def gridConfirmed( ipath='confirmedProperties.pkl', wideFormat=True, \
 
 
         # Radius-temperature grid plot listing the top-ranked planets in each cell:
-        extraNotes = 'TESS discoveries shown in bold font'
+        extraNotes = '\nTESS discoveries shown in bold font'
         fig2, ax2 = plotTeqRpGrid( z, SMFlag, titleStr=titleStr, dateStr=dateStr, \
                                    extraNotes=extraNotes, survey=survey, TOIGrid=False, \
                                    RADecStr=RADecStr, HeatMap=HeatMap  )
@@ -866,7 +869,7 @@ def plotTeqRpGrid( plDict, SMFlag, cgrid=None, titleStr='', \
     if ASCII:
         plList = addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
                             TOIGrid=TOIGrid, bestInClass=bestInClass, \
-                            survey=survey, ASCII=True )
+                            plTESS=plTESS, survey=survey, ASCII=True )
         return plList, dateStr
     ax, SMstr = addTopSMs(  ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, \
                             TOIGrid=TOIGrid, bestInClass=bestInClass, \
