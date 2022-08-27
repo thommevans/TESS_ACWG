@@ -881,6 +881,7 @@ def plotTeqRpGrid( plDict, SMFlag, cgrid=None, titleStr='', \
         ax.plot( [xLines.min(),xLines.max()], [yLines[i],yLines[i]], '-', \
                  c=cgrid, zorder=1 )
     
+    xtxt = 0.04
     if HeatMap:
         # Creates a new custom colormap
         cdict = { 'red':[    [0, 1, 204/255],
@@ -916,7 +917,7 @@ def plotTeqRpGrid( plDict, SMFlag, cgrid=None, titleStr='', \
     else:
         subtitleY = 0.925
         dySubTitle = 0.015
-    fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
+    fig.text( xtxt, subtitleY, SMstr, c='green', fontsize=14, \
               horizontalalignment='left', verticalalignment='bottom' )
    
     otherNotes = '{0} values are listed in square brackets.'.format( SMFlag )
@@ -929,7 +930,7 @@ def plotTeqRpGrid( plDict, SMFlag, cgrid=None, titleStr='', \
     if extraNotes is not None:
         #otherNotes += '\n{0}'.format( extraNotes )
         otherNotes += '{0}'.format( extraNotes )
-    fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
+    fig.text( xtxt, subtitleY-dySubTitle, otherNotes, c='black', \
               fontsize=14, horizontalalignment='left', verticalalignment='top' )
     if bestInClass==True:
         Utils.legendBestInClass( fig )
@@ -1097,7 +1098,7 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap=F
     if wideFormat==False:
         fig = plt.figure( figsize=[11,9] )
         xlow = 0.09
-        ylow = 0.085
+        ylow = 0.08
         axh = 0.8
         axw = 0.93
         dxl = 0.06
@@ -1108,10 +1109,10 @@ def generateAxes( wideFormat=True, whichType='RpTeq', showLegend=True, HeatMap=F
         dyNewLine = 0.01
     else:
         fig = plt.figure( figsize=[18,9] )
-        xlow = 0.052#0.064
+        xlow = 0.055#0.064
         ylow = 0.085
         axh = 0.715
-        axw = 0.945#0.93
+        axw = 0.94#0.93
         dxl = 0.036
         xlow2 = xlow+0.7*axw
         ylow2 = ylow+axh+0.02
@@ -1336,10 +1337,11 @@ def plotTeqRpScatter( plDict, SMFlag, ms=8, alpha=1, \
         subtitleY = 0.925
         dySubTitle = 0.015
     if applySMcuts==True:
-        fig.text( 0.08, subtitleY, SMstr, c='green', fontsize=14, \
+        xtxt = 0.04
+        fig.text( xtxt, subtitleY, SMstr, c='green', fontsize=14, \
                   horizontalalignment='left', verticalalignment='bottom' )
         otherNotes = 'Grey points do not meet {0} thresholds'.format( SMFlag )
-        fig.text( 0.08, subtitleY-dySubTitle, otherNotes, c='black', \
+        fig.text( xtxt, subtitleY-dySubTitle, otherNotes, c='black', \
                   fontsize=14, horizontalalignment='left', verticalalignment='top' )
         
     return fig, ax
