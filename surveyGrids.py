@@ -208,10 +208,18 @@ def gridBestInClass( ipaths={ 'Confirmed':'', 'TOIs':''}, \
                                                                 limitsRA_hr, \
                                                                 limitsDec_deg, \
                                                                 onlyPCs=True )
+    # Hack to add an array zT['thresholdPasses'] of 0s and 1s specifying
+    # if a given TOI with estimated mass passes the ACWG (i.e. Kempton et al)
+    # TSM/ESM threshold metric for its given Rp-Teq box; note that the survey
+    # dictionary contains the Rp-Teq divisions, but we must force 'ACWG' as
+    # the framework argument here, because framework=='BestInClass' in the
+    # survey dictionary:
+    zT = Utils.addThresholdPasses( zT, survey, SMFlag, 'ACWG' )
     zC, cutStrC, titleStrC, RADecStrC = Utils.applyPreCutsConfirmed( zC, preCutsC, \
                                                                      obsSample, \
                                                                      limitsRA_hr, \
                                                                      limitsDec_deg )
+    
     # Combine the Confirmed and TOI samples:
     z = Utils.combineConfirmedAndTOIs( zC, zT )
     
@@ -771,6 +779,9 @@ def plotTeqRpTESS( ax, showSolarSystem=True, showNeptuneRadius=True, \
     applySMcuts = False
     for i in range( n ):
         c = Utils.getStarColor( Ts[i] )
+        # TODO: prior to calling this routine, it might be good
+        # to instead create a boolean array for each target specifying
+        # whether or not it passes the TSM/ESM threshold for its cell...
         if SMFlag == 'TSM':
             thresholdSM = surveySetup.thresholdTSM( RpVal[i], Teq[i], framework='ACWG' )
         elif SMFlag == 'ESM':
@@ -1046,6 +1057,10 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, bestInClass=Fal
                 # created to handle the BestInClass plots, because it does an additional
                 # sorting operation within each grid cell according to the mass status
                 # of the planet. In the future, this should be cleaned up...
+                # 2022-08-30:
+                # Been requested (by Eliza) not to sort according to mass status, so maybe
+                # this input argument list doesn't have to be so long? Can't remember what
+                # the hacking comment above referred to though.
                 plNames = Utils.writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, \
                                                  plTESS, TstarK, TOIGrid, SMFlag, plDict, \
                                                  SMVals, top5ij, ASCII, bestInClass, \

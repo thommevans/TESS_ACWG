@@ -225,6 +225,21 @@ def plotKunimoto():
     
 
 def getBestInClassColor( i ):
+    """
+    """
+    if i==1: # 'Green' = confirmed, has >5-sig mass measurement
+        backgroundColor = np.array( [178,223,138] )/256.
+    elif i==2: # 'Yellow' = confirmed, lacking >5-sigma mass measurement
+        backgroundColor = np.array( [255,237,160] )/256.
+    elif i==3: # 'Orange' = unconfirmed, mass estimated, passes Kempton threshold
+        backgroundColor = np.array( [253,191,111] )/256. 
+    elif i==4: # 'Red' = unconfirmed, mass estimated, does NOT pass Kempton threshold
+        backgroundColor = np.array( [251,154,153] )/256.
+    else:
+        pdb.set_trace()
+    return backgroundColor
+
+def getBestInClassColor_ORIGINAL( i ):
     if i==1:
         backgroundColor = np.array( [178,223,138] )/256. # 'Green'
     elif i==2:
@@ -242,6 +257,14 @@ def writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, plTESS, TstarK, TOIGr
     This is a VERY hacked up routine with a stupid-long argument list, created to handle the
     BestInClass plots, because it does an additional sorting operation within each grid cell
     according to the mass status of the planet. In the future, this should be cleaned up...
+
+    2022-08-30:
+    Been requested (by Eliza) not to sort according to mass status, so maybe
+    this input argument list doesn't have to be so long? Can't remember what
+    the hacking comment above referred to though.
+
+    SMVals = the actual TSM/ESM values
+    top5SM = the top 5 predicted TSM/ESM values
     """
     ms = 8
     predSM = top5SM.min()
@@ -302,7 +325,17 @@ def writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, plTESS, TstarK, TOIGr
         SMStrs = np.array( SMStrs, dtype=str )
         TstarKs = np.array( TstarKs, dtype=float )
         if bestInClass==True:
-            ixsWrite = np.argsort( sMass[ixs] )
+            # UP TO HERE 30/8/2022 = NEED TO WORK OUT
+            # HOW TO ENSURE THAT OUTPUT IS PRINTED IN ORDER
+            # OF RANKED TSM/ESM... ? MAY NEED TO PASS TSM/ESM
+            # VALUES IN AS ANOTHER ARRAY, SIMILAR TO THE
+            # SMASS ARRAY...
+            #ixsWrite = np.argsort( sMass[ixs] )
+            #ixsWrite = np.argsort( SMVals[ixs] )
+            ixsWrite = np.arange( nwrite )
+            #print( 'SMVals', SMVals )
+            #print( 'top5SM', top5SM )
+            #pdb.set_trace()
             plStrs = plStrs[ixsWrite]
             SMStrs = SMStrs[ixsWrite]
             TstarKs = TstarKs[ixsWrite]
@@ -352,24 +385,77 @@ def writeToGridCell( ax, plNames, nwrite, y0, dy, ixs, pl, plTESS, TstarK, TOIGr
 
 
 def legendBestInClass( fig ):
-    ytxt0 = 0.96
     bc = {}
-    for i in [1,2,3]:
+    for i in [1,2,3,4]:
         bc[i] = getBestInClassColor( i )
     lab = { 1:'Confirmed, has $>5\\sigma$ mass', \
             2:'Confirmed, lacking $>5\\sigma$ mass', \
-            3:'Unconfirmed TOI' }
-    xtxt = 0.3
-    for i in [1,2,3]:
-        print( i, xtxt )
-        fig.text( xtxt, ytxt0, lab[i], fontsize=14, \
-                  weight='normal', color='Black', backgroundcolor=bc[i], \
+            3:'Unconfirmed TOI, pass threshold', 
+            4:'Unconfirmed TOI, fail threshold' }
+    dy = 0.04
+    ytxt0 = 0.96
+    xtxtL = 0.6
+    xtxtR = xtxtL + ( len( lab[2] )+10 )*0.0045 # 0.3
+    ytxt = { 1:ytxt0, 2:ytxt0-dy, 3:ytxt0, 4:ytxt0-dy }
+    xtxt = { 1:xtxtL, 2:xtxtL, 3:xtxtR, 4:xtxtR }
+    ks = [1,2,3,4]
+    for i in range( 4 ):
+        #print( ks[i], xtxt )
+        k = ks[i]
+        fig.text( xtxt[k], ytxt[k], lab[k], fontsize=14, \
+                  weight='normal', color='Black', backgroundcolor=bc[k], \
                   horizontalalignment='left', verticalalignment='center' )
-        xtxt += ( len( lab[i] )+10 )*0.005
+        #xtxt += ( len( lab[i] )+10 )*0.005
     return None
 
 
 def combineConfirmedAndTOIs( plDictConfirmed, plDictTOIs ):
+    keysC = list( plDictConfirmed.keys() )
+    keysT = list( plDictTOIs.keys() )
+    nkeysT = len( keysT )
+    ignoreKeys = [ 'Tmag', 'TICID', 'TeqK_exofop', 'RA_hr' ]
+    zCombined = {}
+    nT = len( plDictTOIs['planetName'] )
+    #ixx = (plDictConfirmed['planetName']=='KELT-20 b' )
+    #print( np.sum( ixx ) )
+    #pdb.set_trace()
+    nC = len( plDictConfirmed['planetName'] )
+    nansC = np.nan*np.ones( nC )
+    for i in range( nkeysT ):
+        k = keysT[i]
+        if k not in ignoreKeys:
+            if k in keysC:
+                zCombined[k] = np.concatenate( [ plDictConfirmed[k], plDictTOIs[k] ] )
+            elif k=='RpUncRE':
+                lSigC = np.abs( plDictConfirmed['RpLsigRE'] )
+                uSigC = np.abs( plDictConfirmed['RpUsigRE'] )
+                RpUncC = np.max( np.column_stack( [ lSigC, uSigC ] ), axis=1 )
+                zCombined[k] = np.concatenate( [ RpUncC, plDictTOIs[k] ] )
+            else:
+                zCombined[k] = np.concatenate( [ nansC, plDictTOIs[k] ] )
+    # TESS-discovered *confirmed* planets are 1, all others (including non-confirmed
+    # TOIs) are 0:
+    zCombined['confirmedTESS'] = np.concatenate( [ plDictConfirmed['TESS'], \
+                                                   np.zeros( nT ) ] )
+    # Indexes to identify four subgroups:
+    #  1 = Confirmed, with >5-sigma mass.
+    #  2 = Confirmed, without >5-sigma mass.
+    #  3 = TOIs, only mass is an estimate, passes Kempton threshold
+    #  4 = TOIs, only mass is an estimate, does *not* pass Kempton threshold
+    mC = np.ones( nC, dtype=int )
+    mVal = plDictConfirmed['MpValME']
+    mUnc = plDictConfirmed['MpLsigME']
+    nsigC = np.abs( mVal/mUnc )
+    mC[(nsigC<5)+(np.isfinite( nsigC )==False)] = 2
+    # Split between TOIs with estimated masses that pass the minimum TSM/ESM
+    # thresholds (=3) and those that don't pass the thresholds (=4):
+    mT = 3*np.ones( nT, dtype=int ) # 
+    mT[plDictTOIs['thresholdPass']==0] = 4
+    # Combine confirmed planets and unconfirmed TOIs:
+    zCombined['statusMass'] = np.concatenate( [ mC, mT ] )
+    return zCombined
+
+def combineConfirmedAndTOIs_ORIGINAL( plDictConfirmed, plDictTOIs ):
     keysC = list( plDictConfirmed.keys() )
     keysT = list( plDictTOIs.keys() )
     nkeysT = len( keysT )
@@ -403,7 +489,7 @@ def combineConfirmedAndTOIs( plDictConfirmed, plDictTOIs ):
     mUnc = plDictConfirmed['MpLsigME']
     nsigC = np.abs( mVal/mUnc )
     mC[(nsigC<5)+(nsigC==np.nan)] = 2 
-    mT = 3*np.ones( nT, dtype=int ) 
+    mT = 3*np.ones( nT, dtype=int )
     zCombined['statusMass'] = np.concatenate( [ mC, mT ] )
     return zCombined
 
@@ -1212,3 +1298,25 @@ def Normalize(values, clip, scaled=True):
                 norm = 0.99 
         box_norm.append(norm)
     return box_norm
+
+
+def addThresholdPasses( z, survey, SMFlag, framework ):
+    """
+    Add an array of 0s and 1s to the dictionary z, specifying
+    whether or not each target meets the minimum TSM/ESM
+    threshold for the given survey (i.e. Rp-Teq divisions) under
+    the given framework (e.g. Kempton et al., 2018).
+    """
+    if SMFlag=='TSM':
+        threshFunc = survey['thresholdTSM']
+    elif SMFlag=='ESM':
+        threshFunc = survey['thresholdESM']
+    n = len( z['planetName'] )
+    z['thresholdPass'] = np.zeros( n, dtype=int )
+    for i in range( n ):
+        RpRE = z['RpValRE'][i]
+        TeqK = z['TeqK'][i]
+        SMthresh, SMstr = threshFunc( RpRE, TeqK, framework=framework )
+        if z['SM'][i]>SMthresh:
+            z['thresholdPass'][i] = 1
+    return z
