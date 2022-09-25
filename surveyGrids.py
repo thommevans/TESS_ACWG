@@ -1474,7 +1474,7 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
         #RpSI = RpValRE*Utils.REARTH_SI
         #RsSI = RsRS*Utils.RSUN_SI
         #RpRs = RpSI/RsSI
-        RpRs = ( RpValRE*Utils.REARTH_SI )/( RsRS*Utils.RSUN_SI )
+        #RpRs = ( RpValRE*Utils.REARTH_SI )/( RsRS*Utils.RSUN_SI )
         SM[ixs] = Utils.computeESM( TeqK[ixs], RpRs[ixs], TstarK[ixs], Kmag[ixs] )
 
     ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
@@ -1499,6 +1499,7 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag='TSM' ):
     z0 = pickle.load( ifile )
     ifile.close()
     z = z0['allVals']
+    z = Utils.fixAnomalousRpRs( z )
     planetName = z['planetName']
     RA = z['RA_deg']
     RAhr = RA*(24/360.)
@@ -1585,6 +1586,7 @@ def readConfirmedTESSProperties( publishedMasses=True, SMFlag = 'TSM' ):
     z0 = pickle.load( ifile )
     ifile.close()
     z = z0['allVals']
+    z = Utils.fixAnomalousRpRs( z )
     planetName = z['planetName']
     RsRS = z['RsRS']
     TeqK = z['TeqK']
@@ -1660,6 +1662,7 @@ def readWithMassTESSProperties():
     z0 = pickle.load( ifile )
     ifile.close()
     z = z0['allVals']
+    z = Utils.fixAnomalousRpRs( z )
     planetName = z['planetName']
     RsRS = z['RsRS']
     TeqK = z['TeqK']

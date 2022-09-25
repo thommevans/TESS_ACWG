@@ -384,6 +384,7 @@ def correctRpRs( z ):
     RpSI = z['RpValRE'][ixs]*Utils.REARTH_SI
     RsSI = z['RsRS'][ixs]*Utils.RSUN_SI
     z['RpRs'][ixs] = RpSI/RsSI
+    z = Utils.fixAnomalousRpRs( z )
     return z
     
 def correctT14hr( z ):
@@ -662,6 +663,7 @@ def readRawConfirmedNExScI( csvIpath, readExisting=False ):
         else:
             z[k] = convertMissing( z[k] )
             z[k] = np.array( z[k], dtype=float )
+    
     return z
 
 
@@ -703,7 +705,7 @@ def readRawTOIsNExScI( fpath, forceDownload=False ):
     z['RsUppErrRS'] = t[1:,cols=='st_raderr1'].flatten()
     z['RsLowErrRS'] = t[1:,cols=='st_raderr2'].flatten()
     z['Tmag'] = t[1:,cols=='st_tmag'].flatten()
-    
+
     # TODO = Request JHK mags are added.
     TFOP = t[1:,cols=='tfopwg_disp'].flatten()
     ixs = ( TFOP!='KP' )*( TFOP!='FP' )*( TFOP!='FA' )

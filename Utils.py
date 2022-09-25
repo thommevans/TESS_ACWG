@@ -496,30 +496,54 @@ def combineConfirmedAndTOIs_ORIGINAL( plDictConfirmed, plDictTOIs ):
 def applyPreCutsTOIs( z, preCutsFunc, obsSample, limitsRA_hr, limitsDec_deg, onlyPCs=True ):
     n0 = len( z['planetName'] )
     ixs0, cutStr, titleStr = preCutsFunc( z, obsSample )
+    
     # Exclude targets outside the RA limits:
     RAStr, RAMin_hr, RAMax_hr = processRARestriction( limitsRA_hr[0], limitsRA_hr[1] )
     ixsRA = ( z['RA_hr'][ixs0]>=RAMin_hr )*( z['RA_hr'][ixs0]<=RAMax_hr )
+    
     # Exclude targets outside the Dec limits:
     DecStr, DecMin_deg, DecMax_deg = processDecRestriction( limitsDec_deg[0], \
                                                             limitsDec_deg[1] )
     ixsDec = ( z['Dec_deg'][ixs0]>=DecMin_deg )*( z['Dec_deg'][ixs0]<=DecMax_deg )
     RADecStr = '{0}\n{1}\nNo bright limits have been applied\n'.format( RAStr, DecStr )
+    
     # Exclude targets with large radius uncertainties:
-    RpUncMax = 0.25*z['RpValRE'] # Rp uncertainties <25% of radius value
-    RpUncMax[RpUncMax<1] = 1 # except if that's <1RE, then set to 1RE
-    ixsRp = ( z['RpUncRE']<RpUncMax ) # only keep those with Rp uncertainties in this range
+    RpUncMaxRE = 0.25*z['RpValRE'][ixs0] # Rp uncertainties <25% of radius value
+    RpUncMaxRE[RpUncMaxRE<1] = 1 # except if that's <1RE, then set to 1RE
+    ixsRp = ( z['RpUncRE'][ixs0]<RpUncMaxRE ) # only keep those with Rp uncertainties in this range
     print( '\nDiscarding {0:.0f} (out of {1:.0f}) TOIs due to large ExoFOP radius uncertainties\n'\
            .format( len( ixsRp )-ixsRp.sum(), len( ixsRp ) ) )
+    
+    # Exclude targets with radius ratios unsuitable for atmospheric characterisation:
+    ixsRpRs = ( z['RpRs'][ixs0]<1 )
     if onlyPCs == True:
         ixsPCs = ( [i[-4:]=='(PC)' for i in z['planetName'][ixs0]] )
         ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsRp*ixsPCs]
     else:
         ixs = np.arange( n0 )[ixs0][ixsRA*ixsDec*ixsRp]
+        
     # Apply cuts to all dictionary arrays:
     for k in list( z.keys() ):
         z[k] = z[k][ixs]
+        
     return z, cutStr, titleStr, RADecStr
 
+
+def fixAnomalousRpRs( z ):
+    
+    n0 = len( z['planetName'] )
+    ixs0 = np.arange( n0 )
+    
+    # Compute RpRs values directly from Rp and Rs:
+    RpRsExtra = ( z['RpValRE']*REARTH_SI )/( z['RsRS']*RSUN_SI ) # separate calculation
+
+    # Identify any cases where RpRs is anomalous (i.e. >1) but Rp and Rs give a sensible value:
+    ixsFix = ixs0[(z['RpRs'][ixs0]>=1)*(RpRsExtra[ixs0]<1)] # RpRs anomalous, but separate calculation sensible
+
+    # Replace anomalous RpRs values where possible:
+    z['RpRs'][ixsFix] = RpRsExtra[ixsFix]
+
+    return z
 
 def estimateUncertaintyTSM( plDict, ixs, k ):
     """
@@ -635,14 +659,24 @@ def applyPreCutsConfirmed( z, preCutsFunc, obsSample, limitsRA_hr, limitsDec_deg
     Note that limitsRA_hr and limitsDec_deg haven't been used for Confirmed yet, 
     but could be, and are currently implemented for TOIs.
     """
+    n0 = len( z['planetName'] )
+    ixs0, cutStr, titleStr = preCutsFunc( z, obsSample )
     
-    ixs, cutStr, titleStr = preCutsFunc( z, obsSample )
+    # Exclude targets outside the RA limits:
     RADecStr = '' # not yet implemented for Confirmed (?), only TOIs...
+
+    # Exclude targets with radius ratios unsuitable for atmospheric characterisation:
+    ixsRpRs = ( z['RpRs'][ixs0]<1 )
+    
+    # Combine the cuts:
+    ixs = np.arange( n0 )[ixs0][ixsRpRs]
     print( '{0:.0f} planets have mass measurements or estimates'.format( len( ixs ) ) )
     print( 'and orbit stars with radii 0.05-10 R_Sun' )
+    
     # Apply cuts to all dictionary arrays:
     for k in list( z.keys() ):
         z[k] = z[k][ixs]
+        
     return z, cutStr, titleStr, RADecStr
 
 
