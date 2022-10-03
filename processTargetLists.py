@@ -92,7 +92,7 @@ def predictedTESS():
     n = len( z['RpValRE'] )
  
     z['MpValME'] = Utils.planetMassFromRadius( z['RpValRE'], \
-                                               whichRelation='Chen&Kipping2017' )
+                                               whichRelation='ExoArchive' )
     z = addTeq( z )
     z['TSM'] = Utils.computeTSM( z['RpValRE'], z['MpValME'], z['RsRS'], \
                                  z['TeqK'], z['Jmag'] )
@@ -233,6 +233,13 @@ def readConfirmedNExScI( fpath, readExisting=False ):
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
                                     zAll['TstarK'], zAll['Kmag'] )
+    zAll['eclipseDepth'] = Utils.computeEclipseDepth( zAll['TeqK'], \
+                                                      zAll['RpRs'], \
+                                                      zAll['TstarK'] )
+    zAll['transitSignal'] = Utils.computeTransSignal( zAll['RpRs'], \
+                                                      zAll['RpValRE'], \
+                                                      zAll['TeqK'], \
+                                                      zAll['MpValME'] )
     zAll['Kamp'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
     return zAll, zMissing, dateStr
 
@@ -248,7 +255,7 @@ def readTOIsNExScI( fpath, forceDownload=False ):
             return zAll, zMissing, dateStr
     
     zAll['MpValME'] = Utils.planetMassFromRadius( zAll['RpValRE'], \
-                                                  whichRelation='Chen&Kipping2017' )
+                                                  whichRelation='ExoArchive' )
     
     zAll['Jmag'] = Utils.JHKVmags(zAll['TICID'])['Jmag']
     zAll['Hmag'] = Utils.JHKVmags(zAll['TICID'])['Hmag']
@@ -266,6 +273,13 @@ def readTOIsNExScI( fpath, forceDownload=False ):
                                     zAll['RsRS'], zAll['TeqK'], zAll['Jmag'] )
     zAll['ESM'] = Utils.computeESM( zAll['TeqK'], zAll['RpRs'], \
                                     zAll['TstarK'], zAll['Kmag'] )
+    zAll['eclipseDepth'] = Utils.computeEclipseDepth( zAll['TeqK'], \
+                                                      zAll['RpRs'], \
+                                                      zAll['TstarK'] )
+    zAll['transitSignal'] = Utils.computeTransSignal( zAll['RpRs'], \
+                                                      zAll['RpValRE'], \
+                                                      zAll['TeqK'], \
+                                                      zAll['MpValME'] )
     
     zAll['Kamp'] = Utils.computeRVSemiAmp( zAll['Pday'], zAll['MpValME'], zAll['MsMS'] )
     
