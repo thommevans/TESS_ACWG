@@ -129,7 +129,7 @@ def medianSimulation_Kunimoto2022( surveyName, SMFlag ):
         print( 'File:\n{0}\ndoes not exist!'.format( ipath ) )
         print( 'You need to run surveySetup.prepPredicted() first and it' )
         print( 'requires the 324MB file "planets_with_tsm.csv" as input.' )
-        pdb.st_trace()
+        pdb.set_trace()
     ifile = open( ipath, 'rb' )
     z = pickle.load( ifile )
     ifile.close()
