@@ -999,6 +999,8 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, bestInClass=Fal
     TstarK = plDict['TstarK']
     RpRE = plDict['RpValRE']
     SMVals = plDict['SM']
+    AMVals = plDict['AM']
+    MagVals = plDict['Mag']
     if bestInClass==True:
         sMass = plDict['statusMass']
     else:
@@ -1032,13 +1034,17 @@ def addTopSMs( ax, plDict, SMFlag, Tgrid, Rgrid, xLines, yLines, bestInClass=Fal
 
             #Find the threshold SM for the cell
             if SMFlag == 'TSM':
-                SMj, SMstr = survey['thresholdTSM']( RpREj, TeqKi, framework=framework )
+                SMj, SMstr = survey['thresholdTSM']( RpREj, framework=framework )
+                AMj, AMstr = survey['thresholdTS']( RpREj, framework=framework )
+                Magj, Magstr = survey['thresholdJmag']( RpREj, framework=framework )
             elif SMFlag == 'ESM':
-                SMj, SMstr = survey['thresholdESM']( RpREj, TeqKi, framework=framework )
+                SMj, SMstr = survey['thresholdESM']( RpREj, framework=framework )
+                AMj, AMstr = survey['thresholdSE']( RpREj, framework=framework )
+                Magj, Magstr = survey['thresholdKmag']( RpREj, framework=framework )
 
             ixsj = ( RpRE>=Rgrid[j] )*( RpRE<Rgrid[j+1] ) # Show if within the radius range
             # Show if in the cell and SM higher than threshold:
-            ixsij = ixs0[ixsi*ixsj*( SMVals>SMj )] 
+            ixsij = ixs0[ixsi*ixsj*( SMVals>SMj )*( AMVals>AMj )*( MagVals>Magj )] 
             nij = len( ixsij ) # Number in cell higher than threshold
             if nij>0:
                 # Order by decreasing SM:
@@ -1319,9 +1325,11 @@ def plotTeqRpScatter( plDict, SMFlag, ms=8, alpha=1, \
             c = c0
         
         if SMFlag == 'TSM':
-            SMi, SMstr = survey['thresholdTSM']( RpVal[i], Teq[i], framework=framework )
+            #SMi, SMstr = survey['thresholdTSM']( RpVal[i], Teq[i], framework=framework )
+            SMi, SMstr = survey['thresholdTSM']( RpVal[i], framework=framework )
         elif SMFlag == 'ESM':
-            SMi, SMstr = survey['thresholdESM']( RpVal[i], Teq[i], framework=framework )
+            #SMi, SMstr = survey['thresholdESM']( RpVal[i], Teq[i], framework=framework )
+            SMi, SMstr = survey['thresholdESM']( RpVal[i], framework=framework )
 
         if applySMcuts==False: # plotting everything regardless of SM
             if ( indicateTESS==True )*( TESS[i]==1 ):
@@ -1460,8 +1468,12 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
 
     if SMFlag == 'TSM':
         SM = z['TSM']
+        AM = z['transitSignal']
+        Mag = z['Jmag']
     elif SMFlag == 'ESM':
         SM = z['ESM']
+        AM = z['eclipseDepth']
+        Mag = z['Kmag']
 
     n0 = len( planetName )
     ixs = np.arange( n0 )[np.isnan( MpValME )*np.isfinite( RpValRE )]
@@ -1475,12 +1487,14 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
     if SMFlag == 'TSM':
         SM[ixs] = Utils.computeTSM( RpValRE[ixs], MpValME[ixs], \
                                     RsRS[ixs], TeqK[ixs], Jmag[ixs] )
+        AM[ixs] = Utils.computeTransSignal( RpRs[ixs], RpValRE[ixs], TeqK[ixs], MpValME[ixs])
     elif SMFlag == 'ESM':
         #RpSI = RpValRE*Utils.REARTH_SI
         #RsSI = RsRS*Utils.RSUN_SI
         #RpRs = RpSI/RsSI
         #RpRs = ( RpValRE*Utils.REARTH_SI )/( RsRS*Utils.RSUN_SI )
         SM[ixs] = Utils.computeESM( TeqK[ixs], RpRs[ixs], TstarK[ixs], Kmag[ixs] )
+        AM[ixs] = Utils.computeEclipseDepth( TeqK[ixs], RpRs[ixs], TstarK[ixs] )
 
     ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
     print( '\nReading in {0:.0f} planets total.'.format( n0 ) )
@@ -1488,8 +1502,8 @@ def readConfirmedProperties( ipath='confirmedProperties.pkl', SMFlag='TSM' ):
            .format( ixs.sum(), SMFlag ) )
     outp = { 'planetName':planetName[ixs], 'TESS':TESS[ixs], \
              'RA':RA[ixs], 'Dec':Dec[ixs], 'RA_deg':RA_deg[ixs], 'Dec_deg':Dec_deg[ixs], \
-             'SM':SM[ixs], 'T14hr':T14hr[ixs], 'Vmag':Vmag[ixs], \
-             'Jmag':Jmag[ixs], 'Hmag':Hmag[ixs], 'Kmag':Kmag[ixs], \
+             'SM':SM[ixs], 'AM':AM[ixs], 'Mag':Mag[ixs], 'T14hr':T14hr[ixs], \
+             'Vmag':Vmag[ixs], 'Jmag':Jmag[ixs], 'Hmag':Hmag[ixs], 'Kmag':Kmag[ixs], \
              'b':b[ixs], 'RpRs':RpRs[ixs], 'TeqK':TeqK[ixs], 'Insol':Insol[ixs], \
              'TstarK':TstarK[ixs], 'RsRS':RsRS[ixs], 'aAU':aAU[ixs], \
              'RpValRE':RpValRE[ixs], 'RpLsigRE':RpLsigRE[ixs], 'RpUsigRE':RpUsigRE[ixs], \
@@ -1527,13 +1541,17 @@ def readTOIProperties( ipath='toiProperties.pkl', SMFlag='TSM' ):
 
     if SMFlag == 'TSM':
         SM = z['TSM']
+        AM = z['transitSignal']
+        Mag = z['Jmag']
     elif SMFlag == 'ESM':
         SM = z['ESM']
+        AM = z['eclipseDepth']
+        Mag = z['Kmag']
 
     ixs = np.isfinite( TeqK )*np.isfinite( SM )*np.isfinite( RpValRE )
-    outp = { 'planetName':planetName[ixs], 'SM':SM[ixs], 'RpRs':RpRs[ixs], \
-             'RA_deg':RA[ixs], 'RA_hr':RAhr[ixs], 'Dec_deg':Dec[ixs], \
-             'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], \
+    outp = { 'planetName':planetName[ixs], 'SM':SM[ixs], 'AM':AM[ixs], 'Mag':Mag[ixs], \
+             'RpRs':RpRs[ixs], 'RA_deg':RA[ixs], 'RA_hr':RAhr[ixs], \
+             'Dec_deg':Dec[ixs], 'TeqK':TeqK[ixs], 'TstarK':TstarK[ixs], \
              'Jmag':Jmag[ixs], 'Kmag':Kmag[ixs], \
              'RsRS':RsRS[ixs], 'RsUncRS':RsUncRS[ixs], 'aRs':aRs[ixs], \
              'RpValRE':RpValRE[ixs], 'RpUncRE':RpUncRE[ixs], \

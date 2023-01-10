@@ -31,9 +31,18 @@ def preCutsConfirmed( z, obsSample ):
         titleStr = 'Planets with peer-reviewed published ($>5\\sigma$) masses'
         ixs = ixs[np.isfinite( z['MpValME'][ixs] )*np.isfinite( z['MpLsigME'][ixs] )]
         ixs = ixs[( z['MpValME'][ixs]/z['MpLsigME'][ixs]>=5 )]
+        ixs = ixs[z['b'][ixs] < 1]
     elif obsSample=='NeedMasses':
         titleStr = 'Confirmed planets lacking published $>5\\sigma$ mass measurements'
         ixs = ixs[( z['MpValME'][ixs]/z['MpLsigME'][ixs]<5 )]
+        ixs = ixs[z['b'][ixs] < 1]
+    elif obsSample=='BestInClass':
+        titleStr = 'Best-in-class Sample'
+        #ixs = ixs[np.isfinite( z['MpValME'][ixs] )*np.isfinite( z['MpLsigME'][ixs] )]
+        #ixs = ixs[( z['MpValME'][ixs]/z['MpLsigME'][ixs]>=5 )]
+        #ixs = ixs[np.isfinite( z['MpValME'][ixs] )]
+        ixs = ixs[z['b'][ixs] < 1]
+        #ixs = ixs[z['RpRs'][ixs] < 1]
     else:
         pdb.set_trace()
     return ixs, cutStr, titleStr
@@ -49,6 +58,8 @@ def preCutsTOIs( z ):
     ixs = np.arange( n0 )
     # Exclude very big and small stars:
     ixs = ixs[( z['RsRS']>=0.05 )*( z['RsRS']<10 )]
+    # Exclude grazing transits
+    #ixs = ixs[z['b'][ixs] < 1]
     cutStr = ''
     return ixs, cutStr, titleStr
 
@@ -72,14 +83,52 @@ def thresholdTSM( RpRE, framework='ACWG' ):
             TSM = 10
         else:
             TSM = 50 # 2. Everything else
+    elif framework=='BestInClass':
+        TSMstr = 'No TSM cuts applied'
+        if RpRE<1.50: # 1. Terrestrials
+            TSM = 0
+        else:
+            TSM = 0 # 2. Everything else
     return TSM, TSMstr
 
 
 def thresholdESM( RpRE, framework='ACWG' ):
     ESMstr = '* Kempton et al. (2018) ESM cuts applied'
-    ESM = 7.5
+    ESM = 3#0
 
     return ESM, ESMstr
+
+
+def thresholdTranSignal( RpRE, framework='ACWG' ):
+    TSstr = 'Transmission signal size cuts made'
+    TS = 3.0e-5
+        
+    return TS, TSstr
+
+
+def thresholdSecEclipse( RpRE, framework='ACWG' ):
+    EDstr = 'Secondary eclipse depth cuts made'
+    ED = 6.0e-5
+        
+    return ED, EDstr
+
+
+def thresholdJmag( RpRE, framework='ACWG' ):
+    if framework=='ACWG':
+        Jstr = 'Jmag brightness cuts made'
+        JCut = 6.0
+    elif framework=='BestInClass':
+        Jstr = 'Jmag brightness cuts made'
+        JCut = 6.0
+
+    return JCut, Jstr
+
+
+def thresholdKmag( RpRE, framework='ACWG' ):
+    Kstr = 'Kmag brightness cuts made'
+    KCut = 6.4
+
+    return KCut, Kstr
 
 
 def gridEdges( surveyName='ACWG' ):

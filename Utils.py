@@ -495,7 +495,7 @@ def combineConfirmedAndTOIs_ORIGINAL( plDictConfirmed, plDictTOIs ):
 
 def applyPreCutsTOIs( z, preCutsFunc, obsSample, limitsRA_hr, limitsDec_deg, onlyPCs=True ):
     n0 = len( z['planetName'] )
-    ixs0, cutStr, titleStr = preCutsFunc( z, obsSample )
+    ixs0, cutStr, titleStr = preCutsFunc( z )#, obsSample )
     
     # Exclude targets outside the RA limits:
     RAStr, RAMin_hr, RAMax_hr = processRARestriction( limitsRA_hr[0], limitsRA_hr[1] )
@@ -980,7 +980,68 @@ def massRadiusChenKipping2017( RpRE_in ):
         pdb.set_trace()
         
     return MpME_out
+
+
+def massRadiusExoArchive( RpRE_in ):
+    """
+    Evaluates the mean of the Chen & Kipping ( 2017 ) distribution up until
+    a radius of 15 Jupiter radii, at which point it sets the mass to one
+    Jupiter mass.
+    """
+
+    # Power law indices:
+    S1 = 0.2790
+    S2 = 0.589
+    #S3 = -0.044 # value quoted in Chen & Kipping (2017)
+    S3 = 0.01 # mild tweak done purely for convenience
+    S4 = 0.881
+    # Other transition points from Table 1
+    T12ME = np.log10( 2.04 )
+    T23ME = np.log10( 0.414*( MJUP_SI/MEARTH_SI ) )
+    T34ME = np.log10( 0.080*( MSUN_SI/MEARTH_SI ) )
+    # Terran power law constant from Table 1:
+    C1curl = np.log10( 1.008 )
+    # Iteratively derive other power law constants:
+    C2curl = C1curl + ( S1-S2 )*T12ME
+    C3curl = C2curl + ( S2-S3 )*T23ME
+    C4curl = C3curl + ( S3-S4 )*T34ME
+
+    log10MpME = np.linspace( -3, 5, 1000 )
+
+    log10M12 = np.log10( 2.04 )
+    log10M23 = np.log10( 0.414*( MJUP_SI/MEARTH_SI ) )
+    log10M34 = np.log10( 0.080*( MSUN_SI/MEARTH_SI ) )
+    ixs1 = ( log10MpME<=log10M12 )
+    ixs2 = ( log10MpME>log10M12 )*( log10MpME<=log10M23 )
+    ixs3 = ( log10MpME>log10M23 )*( log10MpME<=log10M34 )
+    ixs4 = ( log10MpME>log10M34 )
+
+    log10RpRE = np.ones_like( log10MpME )
+    log10RpRE[ixs1] = C1curl + ( log10MpME[ixs1]*S1 )
+    log10RpRE[ixs2] = C2curl + ( log10MpME[ixs2]*S2 )
+    log10RpRE[ixs3] = C3curl + ( log10MpME[ixs3]*S3 )
+    log10RpRE[ixs4] = C4curl + ( log10MpME[ixs4]*S4 )
+
+    log10MpME_out = np.interp( np.log10( RpRE_in ), log10RpRE, log10MpME )
+    MpME_out = 10**log10MpME_out
+
+    res = [idx for idx, val in enumerate(RpRE_in) if val >= 15.]
+    MpME_out[res] = MJUP_SI/MEARTH_SI
+    #print(res)
+    #print(RpRE_in[res])
+    #print(MpME_out[res])
     
+    if 0:
+        plt.figure()
+        plt.plot( log10MpME[ixs1], log10RpRE[ixs1], '-r' )
+        plt.plot( log10MpME[ixs2], log10RpRE[ixs2], '-k' )
+        plt.plot( log10MpME[ixs3], log10RpRE[ixs3], '-g' )
+        plt.plot( log10MpME[ixs4], log10RpRE[ixs4], '-c' )
+
+        print( RpRE_in, MpME_out )
+        
+    return MpME_out
+
 
 def planetMassFromRadius( RpRE, whichRelation='Chen&Kipping2017' ):
     """
@@ -1005,6 +1066,8 @@ def planetMassFromRadius( RpRE, whichRelation='Chen&Kipping2017' ):
             MpME[ixs2] = 1.436*( RpRE[ixs2]**1.70 )
             ixs3 = ( RpRE>=14.26 )
             MpME[ixs3] = np.nan
+    elif whichRelation=='ExoArchive':
+        MpME = massRadiusExoArchive( RpRE )
     return MpME
 
 
@@ -1086,6 +1149,32 @@ def computeESM( TeqK, RpRs, TstarK, Kmag ):
     Bstar =  PlanckFuncSI( wavRefSI, TstarK )
     ESM = 4.29*(1e6)*( Bday/Bstar )*( RpRs**2. )*( 10**( -Kmag/5. ) )
     return ESM
+
+
+def computeTransSignal( RpRs, RpValRE, TeqK, MpValME ):
+    RpValSI = RpValRE*np.longdouble( 6.3781e6 )
+    MpValSI = MpValME*np.longdouble( 5.9722e24 )
+    nAll = len( RpRs )
+    ixsA = np.arange( nAll )[np.isfinite( RpValRE )]
+    ixsB = np.arange( nAll )[np.isfinite( RpValRE )==False]
+    ixs1 = ixsA[( RpValRE[ixsA]<=1.5 )]
+    ixs2 = ixsA[( RpValRE[ixsA]>1.5 )]
+    muSI = np.longdouble( 1.67262192e-27 ) # Proton mass (kg)
+    mus = np.zeros( nAll )
+    mus[ixs1] = 18*muSI
+    mus[ixs2] = 2.3*muSI
+    GSI = np.longdouble( 6.674e-11 ) # Gravitational constant (SI units)
+    kSI = np.longdouble( 1.380649e-23 ) # Boltzman constant (J/K)
+    return 2*( RpRs**2. )*( RpValSI*kSI*TeqK )/( mus*GSI*MpValSI )
+
+
+def computeEclipseDepth( TeqK, RpRs, TstarK):
+    wavRefSI = 7.5e-6
+    TdayK = 1.10*TeqK # from Section 3.2 of Kempton+2018
+    Bday =  PlanckFuncSI( wavRefSI, TdayK )
+    Bstar =  PlanckFuncSI( wavRefSI, TstarK )
+    eclipseDepth = ( Bday/Bstar )*( RpRs**2. )
+    return eclipseDepth
 
 
 def PlanckFuncSI( wavSI, T ):
@@ -1350,7 +1439,7 @@ def addThresholdPasses( z, survey, SMFlag, framework ):
     for i in range( n ):
         RpRE = z['RpValRE'][i]
         TeqK = z['TeqK'][i]
-        SMthresh, SMstr = threshFunc( RpRE, TeqK, framework=framework )
+        SMthresh, SMstr = threshFunc( RpRE, framework=framework )
         if z['SM'][i]>SMthresh:
             z['thresholdPass'][i] = 1
     return z
